@@ -1,0 +1,64 @@
+{
+  "appName": "Smart Curricula Platform",
+  "appTagline": "Smart",
+  "nav": {
+    "myCurricula": "My Curricula",
+    "uploadCurriculum": "Upload Curriculum",
+    "exams": "Exams",
+    "grades": "My Grades",
+    "progress": "My Progress",
+    "glossary": "Glossary",
+    "plans": "Plans",
+    "teacherHome": "Home",
+    "myStudents": "My Students",
+    "needsReview": "Needs Review",
+    "examConfigs": "Exam Settings",
+    "questionBank": "Question Bank",
+    "adminStats": "Statistics",
+    "teachers": "Teachers",
+    "allUsers": "All Users",
+    "plansAndPricing": "Plans & Pricing",
+    "coupons": "Discount Coupons",
+    "aiSettings": "AI Settings",
+    "examsShort": "Exams",
+    "manageMyCurricula": "Manage My Curricula",
+    "manageCurricula": "Manage Curricula",
+    "schedule": "My Schedule",
+    "guide": "Guide"
+  },
+  "roles": {
+    "teacher": "Teacher",
+    "admin": "Admin",
+    "student": "Student"
+  },
+  "plans": {
+    "free": "Free",
+    "monthly": "Monthly",
+    "yearly": "Yearly"
+  },
+  "sidebar": {
+    "dailyUsage": "Daily Usage",
+    "questions": "Questions",
+    "logout": "Log Out"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "markAllRead": "Mark all as read",
+    "none": "No notifications",
+    "tooltip": "Notifications"
+  },
+  "common": {
+    "save": "Save",
+    "saving": "Saving...",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "confirm": "Confirm",
+    "back": "Back",
+    "search": "Search",
+    "close": "Close",
+    "language": "Language"
+  }
+}

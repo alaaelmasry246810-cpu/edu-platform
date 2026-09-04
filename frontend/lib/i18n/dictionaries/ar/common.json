@@ -1,0 +1,64 @@
+{
+  "appName": "منصة المناهج الذكية",
+  "appTagline": "الذكية",
+  "nav": {
+    "myCurricula": "مناهجي",
+    "uploadCurriculum": "رفع منهج",
+    "exams": "الاختبارات",
+    "grades": "درجاتي",
+    "progress": "تقدمي",
+    "glossary": "المصطلحات",
+    "plans": "الخطط",
+    "teacherHome": "الرئيسية",
+    "myStudents": "طلابي",
+    "needsReview": "تحتاج مراجعة",
+    "examConfigs": "إعدادات الامتحانات",
+    "questionBank": "بنك الأسئلة",
+    "adminStats": "الإحصائيات",
+    "teachers": "المعلمون",
+    "allUsers": "جميع المستخدمين",
+    "plansAndPricing": "الخطط والأسعار",
+    "coupons": "كوبونات الخصم",
+    "aiSettings": "إعدادات AI",
+    "examsShort": "الامتحانات",
+    "manageMyCurricula": "إدارة مناهجي",
+    "manageCurricula": "إدارة المناهج",
+    "schedule": "جدولي",
+    "guide": "الدليل"
+  },
+  "roles": {
+    "teacher": "معلم",
+    "admin": "آدمن",
+    "student": "طالب"
+  },
+  "plans": {
+    "free": "مجاني",
+    "monthly": "شهري",
+    "yearly": "سنوي"
+  },
+  "sidebar": {
+    "dailyUsage": "الاستخدام اليومي",
+    "questions": "الأسئلة",
+    "logout": "تسجيل الخروج"
+  },
+  "notifications": {
+    "title": "الإشعارات",
+    "markAllRead": "تحديد الكل كمقروء",
+    "none": "لا توجد إشعارات",
+    "tooltip": "الإشعارات"
+  },
+  "common": {
+    "save": "حفظ",
+    "saving": "جاري الحفظ...",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "loading": "جاري التحميل...",
+    "error": "حدث خطأ",
+    "confirm": "تأكيد",
+    "back": "رجوع",
+    "search": "بحث",
+    "close": "إغلاق",
+    "language": "اللغة"
+  }
+}
