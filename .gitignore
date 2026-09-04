@@ -10,6 +10,7 @@ api.txt
 frontend/node_modules/
 frontend/.next/
 frontend/out/
+frontend/tsconfig.tsbuildinfo
 npm-debug.log*
 
 # Python / backend
