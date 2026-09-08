@@ -10,7 +10,11 @@ from qdrant_client.models import (
 from app.config import settings
 
 client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-qdrant = AsyncQdrantClient(host=settings.QDRANT_HOST, port=settings.QDRANT_PORT)
+qdrant = (
+    AsyncQdrantClient(url=settings.QDRANT_URL, api_key=settings.QDRANT_API_KEY or None)
+    if settings.QDRANT_URL
+    else AsyncQdrantClient(host=settings.QDRANT_HOST, port=settings.QDRANT_PORT)
+)
 
 
 async def ensure_collection(collection_name: str) -> None:

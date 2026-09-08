@@ -17,7 +17,10 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "postgresql+asyncpg://eduuser:password@localhost:5432/eduplatform"
 
-    # Qdrant
+    # Qdrant — set QDRANT_URL for a managed cluster (e.g. Qdrant Cloud), else
+    # falls back to QDRANT_HOST/QDRANT_PORT for a local/self-hosted instance.
+    QDRANT_URL: str = ""
+    QDRANT_API_KEY: str = ""
     QDRANT_HOST: str = "localhost"
     QDRANT_PORT: int = 6333
     QDRANT_COLLECTION: str = "curricula"
