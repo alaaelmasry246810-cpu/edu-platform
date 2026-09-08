@@ -11,6 +11,7 @@ from typing import Optional
 from app.database import get_db
 from app.models.user import User, AccountStatus, SubscriptionPlan, UserRole
 from app.models.curriculum import Curriculum
+from app.models.deployment import DeploymentServer
 from app.schemas.user import UserPublic, AdminUserUpdate, AdminSettings
 from app.middleware.auth import get_admin_user
 from app.config import settings
@@ -105,11 +106,15 @@ async def update_user(
     return {"message": "User updated", "user": UserPublic.model_validate(user)}
 
 
-def _generate_temp_password(length: int = 10) -> str:
-    """Random, readable temporary password (letters + digits, no ambiguous chars)."""
-    import secrets as _secrets
-    alphabet = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789"
-    return "".join(_secrets.choice(alphabet) for _ in range(length))
+def _generate_temp_password(full_name: str) -> str:
+    """Default temp password: first name + current year (e.g. 'ahmed2026'),
+    same predictable pattern used everywhere else in the app — easy for an
+    admin to read out loud. Always paired with must_change_password=True."""
+    import re as _re
+    first_name = (full_name or "").strip().split()[0] if (full_name or "").strip() else "user"
+    slug = _re.sub(r"[^\w]", "", first_name).lower() or "user"
+    year = datetime.utcnow().year
+    return f"{slug}{year}"
 
 
 @router.post("/users/{user_id}/reset-password")
@@ -126,7 +131,7 @@ async def reset_user_password(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    temp_password = _generate_temp_password()
+    temp_password = _generate_temp_password(user.full_name)
     user.hashed_password = _pwd.hash(temp_password)
     user.must_change_password = True
     await db.commit()
@@ -172,6 +177,72 @@ async def update_settings(
     return {"message": "Settings updated", "current": _dynamic_settings}
 
 
+# ── Deployment servers (3 fixed reference slots) ───────────────
+
+DEPLOYMENT_SLOTS = ["local", "cloud", "future"]
+_DEFAULT_LABELS = {"local": "محلي", "cloud": "سحابي", "future": "مستقبلي"}
+
+
+def _serialize_server(s: DeploymentServer) -> dict:
+    return {
+        "slot": s.slot,
+        "label": s.label,
+        "url": s.url,
+        "notes": s.notes,
+        "updated_at": s.updated_at.isoformat() if s.updated_at else None,
+    }
+
+
+@router.get("/servers")
+async def list_deployment_servers(
+    _: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """The 3 fixed reference slots (local/cloud/future) — created with
+    defaults on first read, purely informational for the admin's own use."""
+    r = await db.execute(select(DeploymentServer))
+    existing = {s.slot: s for s in r.scalars().all()}
+
+    for slot in DEPLOYMENT_SLOTS:
+        if slot not in existing:
+            server = DeploymentServer(slot=slot, label=_DEFAULT_LABELS[slot])
+            db.add(server)
+            existing[slot] = server
+    await db.commit()
+
+    return [_serialize_server(existing[slot]) for slot in DEPLOYMENT_SLOTS]
+
+
+class DeploymentServerUpdate(BaseModel):
+    label: str
+    url: Optional[str] = None
+    notes: Optional[str] = None
+
+
+@router.put("/servers/{slot}")
+async def update_deployment_server(
+    slot: str,
+    body: DeploymentServerUpdate,
+    _: User = Depends(get_admin_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if slot not in DEPLOYMENT_SLOTS:
+        raise HTTPException(status_code=404, detail="Unknown slot")
+
+    r = await db.execute(select(DeploymentServer).where(DeploymentServer.slot == slot))
+    server = r.scalar_one_or_none()
+    if not server:
+        server = DeploymentServer(slot=slot)
+        db.add(server)
+
+    server.label = body.label
+    server.url = body.url
+    server.notes = body.notes
+    await db.commit()
+    await db.refresh(server)
+    return _serialize_server(server)
+
+
 # ── Teacher Management ────────────────────────────────────────
 
 def _serialize_teacher(t: User) -> dict:
@@ -181,6 +252,7 @@ def _serialize_teacher(t: User) -> dict:
         "id": str(t.id),
         "full_name": t.full_name,
         "email": t.email,
+        "phone": t.phone,
         "status": t.status.value,
         "suspension_reason": t.suspension_reason,
         "teacher_code": t.teacher_code,
@@ -214,6 +286,7 @@ async def list_teachers(
 class CreateTeacherRequest(BaseModel):
     full_name: str
     email: EmailStr
+    phone: str
     password: str
     features: Optional[dict] = None   # {flag: bool}
 
@@ -225,10 +298,13 @@ async def create_teacher(
     db: AsyncSession = Depends(get_db),
 ):
     """Admin creates a teacher account directly (no approval needed)."""
-    # Check email uniqueness
+    # Check email/phone uniqueness
     ex = await db.execute(select(User).where(User.email == body.email))
     if ex.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="البريد الإلكتروني مستخدم بالفعل")
+    ex_phone = await db.execute(select(User).where(User.phone == body.phone))
+    if ex_phone.scalar_one_or_none():
+        raise HTTPException(status_code=400, detail="رقم التليفون مستخدم بالفعل")
 
     # Build validated features dict
     features = {flag: bool(body.features.get(flag, False)) for flag in TEACHER_FEATURE_FLAGS} \
@@ -241,6 +317,7 @@ async def create_teacher(
     teacher = User(
         full_name=body.full_name,
         email=body.email,
+        phone=body.phone,
         hashed_password=_pwd.hash(body.password),
         role=UserRole.TEACHER,
         status=AccountStatus.ACTIVE,
@@ -381,6 +458,8 @@ async def teacher_students(
         "id": str(s.id),
         "full_name": s.full_name,
         "email": s.email,
+        "phone": s.phone,
+        "student_code": s.student_code,
         "status": s.status.value,
         "plan": s.plan.value,
         "ai_assist_enabled": s.ai_assist_enabled,

@@ -15,21 +15,13 @@ python-multipart==0.0.9
 openai==1.50.0
 qdrant-client==1.11.3
 tiktoken==0.7.0
-langchain==0.3.1
-langchain-openai==0.2.1
-langchain-community==0.3.1
 
 # OCR & Document Processing
 pymupdf==1.24.10
 pillow==10.4.0
 pytesseract==0.3.13
-google-cloud-vision==3.7.3
 qrcode==7.4.2
 opencv-python-headless==4.10.0.84
-
-# Cache & Queue
-redis==5.1.0
-celery==5.4.0
 
 # Payments
 stripe==10.12.0
@@ -38,4 +30,3 @@ stripe==10.12.0
 httpx==0.27.2
 python-dotenv==1.0.1
 aiofiles==24.1.0
-slowapi==0.1.9

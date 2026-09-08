@@ -120,6 +120,8 @@ export const adminAPI = {
   curricula:   (params?: object) => api.get("/admin/curricula", { params }),
   deleteCurriculum: (id: string) => api.delete(`/admin/curricula/${id}`),
   resetUserPassword: (userId: string) => api.post(`/admin/users/${userId}/reset-password`),
+  servers:     () => api.get("/admin/servers"),
+  saveServer:  (slot: string, data: { label: string; url?: string; notes?: string }) => api.put(`/admin/servers/${slot}`, data),
 };
 
 // ── Payments ──────────────────────────────────────────────────

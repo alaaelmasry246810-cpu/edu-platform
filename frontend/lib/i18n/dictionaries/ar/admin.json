@@ -56,6 +56,21 @@
     "delete": "حذف",
     "noCurricula": "لا توجد مناهج"
   },
+  "servers": {
+    "title": "🖥️ سيرفرات النشر",
+    "subtitle": "ملاحظات مرجعية بس — المنصة نفسها بتشتغل بـ Docker وتقدر ترفعها على أي سيرفر تختاره لاحقًا",
+    "loadError": "خطأ في تحميل البيانات",
+    "saveSuccess": "تم الحفظ",
+    "saveError": "حصل خطأ أثناء الحفظ",
+    "labelPlaceholder": "اسم/وصف السيرفر",
+    "urlPlaceholder": "https://... أو IP",
+    "notesPlaceholder": "أي ملاحظات (بيانات دخول، مزوّد الخدمة، إلخ)",
+    "save": "حفظ",
+    "saving": "جاري الحفظ...",
+    "lastUpdated": "آخر تحديث",
+    "neverUpdated": "لسه ماتحطش بيانات",
+    "slots": { "local": "محلي", "cloud": "سحابي", "future": "فاضي للمستقبل" }
+  },
   "teachers": {
     "loadError": "تعذّر تحميل المعلمين",
     "createSuccess": "✅ تم إنشاء حساب المعلم",
@@ -76,6 +91,7 @@
     "createFormTitle": "إنشاء حساب معلم جديد",
     "fullName": "الاسم الكامل *",
     "email": "البريد الإلكتروني *",
+    "phone": "رقم التليفون *",
     "password": "كلمة المرور *",
     "grantedFeatures": "الصلاحيات الممنوحة للمعلم",
     "creating": "جاري الإنشاء...",

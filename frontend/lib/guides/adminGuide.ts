@@ -50,6 +50,12 @@ export function getAdminGuide(locale: "ar" | "en"): { title: string; subtitle: s
             { label: "RAG tuning", desc: "Top-K, chunk size, chunk overlap, and creativity (temperature)" },
           ],
         },
+        {
+          icon: "🖥️", title: "Deployment Servers", desc: "Three reference-only slots for your own notes — Local, Cloud, Future",
+          items: [
+            { label: "Just notes", desc: "Nothing here affects the running app — it's a place to jot down each server's URL and login/notes as you set them up" },
+          ],
+        },
       ],
     };
   }
@@ -100,6 +106,12 @@ export function getAdminGuide(locale: "ar" | "en"): { title: string; subtitle: s
         items: [
           { label: "النموذج", desc: "بدّل بين GPT-4o، GPT-4o Mini، Claude 3.5 Sonnet، أو Gemini 1.5 Pro" },
           { label: "ضبط RAG", desc: "Top-K، حجم القطعة، التداخل، ودرجة الإبداع (Temperature)" },
+        ],
+      },
+      {
+        icon: "🖥️", title: "سيرفرات النشر", desc: "3 خانات مرجعية بس لملاحظاتك — محلي، سحابي، فاضي للمستقبل",
+        items: [
+          { label: "مجرد ملاحظات", desc: "مفيهاش أي حاجة بتأثر على المنصة الشغالة — بس مكان تسجّل فيه رابط كل سيرفر وبياناته وقت ما تجهزه" },
         ],
       },
     ],

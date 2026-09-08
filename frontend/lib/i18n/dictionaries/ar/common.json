@@ -24,7 +24,8 @@
     "manageMyCurricula": "إدارة مناهجي",
     "manageCurricula": "إدارة المناهج",
     "schedule": "جدولي",
-    "guide": "الدليل"
+    "guide": "الدليل",
+    "servers": "سيرفرات النشر"
   },
   "roles": {
     "teacher": "معلم",
@@ -39,7 +40,8 @@
   "sidebar": {
     "dailyUsage": "الاستخدام اليومي",
     "questions": "الأسئلة",
-    "logout": "تسجيل الخروج"
+    "logout": "تسجيل الخروج",
+    "changePassword": "تغيير كلمة المرور"
   },
   "notifications": {
     "title": "الإشعارات",

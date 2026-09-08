@@ -24,7 +24,8 @@
     "manageMyCurricula": "Manage My Curricula",
     "manageCurricula": "Manage Curricula",
     "schedule": "My Schedule",
-    "guide": "Guide"
+    "guide": "Guide",
+    "servers": "Deployment Servers"
   },
   "roles": {
     "teacher": "Teacher",
@@ -39,7 +40,8 @@
   "sidebar": {
     "dailyUsage": "Daily Usage",
     "questions": "Questions",
-    "logout": "Log Out"
+    "logout": "Log Out",
+    "changePassword": "Change Password"
   },
   "notifications": {
     "title": "Notifications",

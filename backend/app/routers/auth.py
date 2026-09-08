@@ -22,6 +22,15 @@ def _generate_teacher_code(length: int = 8) -> str:
     return "".join(secrets.choice(alphabet) for _ in range(length))
 
 
+async def _generate_student_code(teacher: User, db: AsyncSession) -> str:
+    """Student code derived from their teacher's code, e.g. 'T-AB12CD-03'."""
+    from sqlalchemy import func
+    count = await db.scalar(
+        select(func.count(User.id)).where(User.teacher_id == teacher.id)
+    )
+    return f"{teacher.teacher_code}-{(count or 0) + 1:02d}"
+
+
 class TeacherRegisterRequest(RegisterRequest):
     """Extra field so teachers can self-register via a different endpoint."""
     pass
@@ -33,9 +42,12 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(User).where(User.email == body.email.lower()))
     if result.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Email already registered")
+    phone_taken = await db.execute(select(User).where(User.phone == body.phone))
+    if phone_taken.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="Phone number already registered")
 
-    teacher_id = None
-    # If body carries teacher_code, resolve it
+    teacher = None
+    student_code = None
     teacher_code = getattr(body, "teacher_code", None)
     if teacher_code:
         tc_result = await db.execute(
@@ -44,15 +56,17 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
         teacher = tc_result.scalar_one_or_none()
         if not teacher:
             raise HTTPException(status_code=404, detail="Teacher code not found")
-        teacher_id = teacher.id
+        student_code = await _generate_student_code(teacher, db)
 
     user = User(
         email=body.email.lower(),
+        phone=body.phone,
         full_name=body.full_name,
         hashed_password=hash_password(body.password),
         role=UserRole.STUDENT,
         status=AccountStatus.PENDING,
-        teacher_id=teacher_id,
+        teacher_id=teacher.id if teacher else None,
+        student_code=student_code,
         must_change_password=False,
     )
     db.add(user)
@@ -60,7 +74,8 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
     return {
         "message": "Account created. Awaiting admin activation.",
         "user_id": str(user.id),
-        "linked_teacher": teacher_id is not None,
+        "linked_teacher": teacher is not None,
+        "student_code": user.student_code,
     }
 
 
@@ -70,6 +85,9 @@ async def register_teacher(body: TeacherRegisterRequest, db: AsyncSession = Depe
     result = await db.execute(select(User).where(User.email == body.email.lower()))
     if result.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="Email already registered")
+    phone_taken = await db.execute(select(User).where(User.phone == body.phone))
+    if phone_taken.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="Phone number already registered")
 
     # Generate unique teacher code
     for _ in range(10):
@@ -82,6 +100,7 @@ async def register_teacher(body: TeacherRegisterRequest, db: AsyncSession = Depe
 
     user = User(
         email=body.email.lower(),
+        phone=body.phone,
         full_name=body.full_name,
         hashed_password=hash_password(body.password),
         role=UserRole.TEACHER,
@@ -100,11 +119,11 @@ async def register_teacher(body: TeacherRegisterRequest, db: AsyncSession = Depe
 
 @router.post("/login", response_model=TokenResponse)
 async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.email == body.email.lower()))
+    result = await db.execute(select(User).where(User.phone == body.phone.strip()))
     user = result.scalar_one_or_none()
 
     if not user or not verify_password(body.password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="Invalid email or password")
+        raise HTTPException(status_code=401, detail="Invalid phone number or password")
 
     if user.status == AccountStatus.PENDING:
         raise HTTPException(status_code=403, detail="Account pending admin activation")

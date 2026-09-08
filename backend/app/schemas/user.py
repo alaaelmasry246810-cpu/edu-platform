@@ -3,16 +3,19 @@ from datetime import datetime
 from uuid import UUID
 from app.models.user import UserRole, AccountStatus, SubscriptionPlan
 
+PHONE_PATTERN = r"^\+?[0-9]{8,15}$"
+
 
 class RegisterRequest(BaseModel):
     email: EmailStr
+    phone: str = Field(pattern=PHONE_PATTERN)
     full_name: str = Field(min_length=2, max_length=255)
     password: str = Field(min_length=8, max_length=128)
     teacher_code: str | None = None   # optional: student links to a teacher at sign-up
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    phone: str
     password: str
 
 
@@ -26,11 +29,13 @@ class TokenResponse(BaseModel):
 class UserPublic(BaseModel):
     id: UUID
     email: str
+    phone: str | None = None
     full_name: str
     role: UserRole
     status: AccountStatus
     plan: SubscriptionPlan
     teacher_code: str | None = None       # non-null for teachers
+    student_code: str | None = None       # non-null for linked students
     teacher_id: UUID | None = None        # non-null for linked students
     subscription_expires_at: datetime | None
     pages_uploaded_this_month: int

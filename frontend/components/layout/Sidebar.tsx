@@ -40,6 +40,7 @@ export default function Sidebar() {
     { href: "/admin/teachers",     label: t("nav.teachers"),          icon: "👨‍🏫" },
     { href: "/admin/users",        label: t("nav.allUsers"),          icon: "👥" },
     { href: "/admin/curricula",    label: t("nav.manageCurricula"),   icon: "📚" },
+    { href: "/admin/servers",      label: t("nav.servers"),           icon: "🖥️" },
     { href: "/admin/plans",        label: t("nav.plansAndPricing"),   icon: "💰" },
     { href: "/admin/coupons",      label: t("nav.coupons"),           icon: "🏷️" },
     { href: "/admin/ai-settings",  label: t("nav.aiSettings"),        icon: "🤖" },
@@ -137,8 +138,14 @@ export default function Sidebar() {
         </div>
       )}
 
-      {/* Logout */}
-      <div className="p-4 border-t border-slate-200 dark:border-slate-800">
+      {/* Change password / Logout */}
+      <div className="p-4 border-t border-slate-200 dark:border-slate-800 space-y-1">
+        <Link
+          href="/auth/change-password"
+          className={clsx("block w-full text-sm text-slate-500 hover:text-blue-600 transition-colors py-1", dir === "rtl" ? "text-right" : "text-left")}
+        >
+          🔒 {t("sidebar.changePassword")}
+        </Link>
         <button
           onClick={handleLogout}
           className={clsx("w-full text-sm text-slate-500 hover:text-red-600 transition-colors py-1", dir === "rtl" ? "text-right" : "text-left")}

@@ -56,6 +56,21 @@
     "delete": "Delete",
     "noCurricula": "No curricula found"
   },
+  "servers": {
+    "title": "🖥️ Deployment Servers",
+    "subtitle": "Reference notes only — the platform runs on Docker and can be deployed to whichever server you pick later",
+    "loadError": "Error loading data",
+    "saveSuccess": "Saved",
+    "saveError": "An error occurred while saving",
+    "labelPlaceholder": "Server name/description",
+    "urlPlaceholder": "https://... or IP",
+    "notesPlaceholder": "Any notes (login info, provider, etc.)",
+    "save": "Save",
+    "saving": "Saving...",
+    "lastUpdated": "Last updated",
+    "neverUpdated": "No details yet",
+    "slots": { "local": "Local", "cloud": "Cloud", "future": "Future (empty)" }
+  },
   "teachers": {
     "loadError": "Failed to load teachers",
     "createSuccess": "✅ Teacher account created",
@@ -76,6 +91,7 @@
     "createFormTitle": "Create New Teacher Account",
     "fullName": "Full Name *",
     "email": "Email *",
+    "phone": "Phone Number *",
     "password": "Password *",
     "grantedFeatures": "Permissions Granted to Teacher",
     "creating": "Creating...",

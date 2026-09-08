@@ -7,6 +7,7 @@ from app.models.exam import (
 from app.models.notification import Notification
 from app.models.question_bank import SharedQuestion
 from app.models.coupon import Coupon
+from app.models.deployment import DeploymentServer
 
 __all__ = [
     # User
@@ -22,4 +23,6 @@ __all__ = [
     "SharedQuestion",
     # Coupons
     "Coupon",
+    # Deployment
+    "DeploymentServer",
 ]

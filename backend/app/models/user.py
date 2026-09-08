@@ -31,6 +31,10 @@ class User(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
+    # Login identifier (replaces email for sign-in). Nullable at the DB level
+    # only so older rows created before this field existed don't break —
+    # every new registration path requires and validates it.
+    phone: Mapped[str | None] = mapped_column(String(20), unique=True, nullable=True, index=True)
     full_name: Mapped[str] = mapped_column(String(255), nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
 
@@ -48,6 +52,8 @@ class User(Base):
     )
     # Teacher join code — unique per teacher, students use it at registration
     teacher_code: Mapped[str | None] = mapped_column(String(20), unique=True, nullable=True, index=True)
+    # Student's own code — derived from their teacher's code (e.g. "T-AB12CD-03")
+    student_code: Mapped[str | None] = mapped_column(String(30), unique=True, nullable=True, index=True)
 
     # Usage tracking
     pages_uploaded_this_month: Mapped[int] = mapped_column(Integer, default=0)

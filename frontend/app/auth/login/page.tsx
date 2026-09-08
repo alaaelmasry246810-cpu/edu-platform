@@ -17,9 +17,9 @@ export default function LoginPage() {
   const [tab, setTab] = useState<Tab>("login");
   const [loading, setLoading] = useState(false);
 
-  const [loginForm, setLoginForm] = useState({ email: "", password: "" });
-  const [studentForm, setStudentForm] = useState({ email: "", full_name: "", password: "", teacher_code: "" });
-  const [teacherForm, setTeacherForm] = useState({ email: "", full_name: "", password: "" });
+  const [loginForm, setLoginForm] = useState({ phone: "", password: "" });
+  const [studentForm, setStudentForm] = useState({ email: "", phone: "", full_name: "", password: "", teacher_code: "" });
+  const [teacherForm, setTeacherForm] = useState({ email: "", phone: "", full_name: "", password: "" });
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,10 +114,10 @@ export default function LoginPage() {
             {tab === "login" && (
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
-                  <label className={labelCls}>{t("auth.fields.email")}</label>
-                  <input type="email" required value={loginForm.email}
-                    onChange={e => setLoginForm({ ...loginForm, email: e.target.value })}
-                    className={inputCls} placeholder="example@email.com" />
+                  <label className={labelCls}>{t("auth.fields.phone")}</label>
+                  <input type="tel" required value={loginForm.phone}
+                    onChange={e => setLoginForm({ ...loginForm, phone: e.target.value })}
+                    className={inputCls} placeholder="01xxxxxxxxx" dir="ltr" />
                 </div>
                 <div>
                   <label className={labelCls}>{t("auth.fields.password")}</label>
@@ -146,6 +146,12 @@ export default function LoginPage() {
                   <input type="email" required value={studentForm.email}
                     onChange={e => setStudentForm({ ...studentForm, email: e.target.value })}
                     className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>{t("auth.fields.phone")}</label>
+                  <input type="tel" required value={studentForm.phone}
+                    onChange={e => setStudentForm({ ...studentForm, phone: e.target.value })}
+                    className={inputCls} placeholder="01xxxxxxxxx" dir="ltr" />
                 </div>
                 <div>
                   <label className={labelCls}>{t("auth.fields.password")}</label>
@@ -186,6 +192,12 @@ export default function LoginPage() {
                   <input type="email" required value={teacherForm.email}
                     onChange={e => setTeacherForm({ ...teacherForm, email: e.target.value })}
                     className={inputCls} />
+                </div>
+                <div>
+                  <label className={labelCls}>{t("auth.fields.phone")}</label>
+                  <input type="tel" required value={teacherForm.phone}
+                    onChange={e => setTeacherForm({ ...teacherForm, phone: e.target.value })}
+                    className={inputCls} placeholder="01xxxxxxxxx" dir="ltr" />
                 </div>
                 <div>
                   <label className={labelCls}>{t("auth.fields.password")}</label>

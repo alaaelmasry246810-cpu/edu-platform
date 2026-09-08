@@ -37,6 +37,7 @@
     "emptyPrefix": "No students",
     "table": {
       "name": "Name",
+      "code": "Code",
       "email": "Email",
       "status": "Status",
       "plan": "Plan",
@@ -69,6 +70,7 @@
       "error": "An error occurred while creating the account",
       "created": "Account created for {name} ✅",
       "oneTimeWarning": "⚠️ This password is shown only once — copy it now",
+      "studentCode": "Student Code",
       "tempPassword": "Temporary Password",
       "copyButton": "Copy Credentials",
       "copied": "Credentials copied"

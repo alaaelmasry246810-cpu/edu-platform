@@ -60,6 +60,7 @@ def _generate_default_password(full_name: str) -> str:
 class CreateStudentRequest(BaseModel):
     full_name: str
     email: EmailStr
+    phone: str
 
 
 @router.post("/students", status_code=201)
@@ -77,15 +78,28 @@ async def create_student(
     ex = await db.execute(select(User).where(User.email == body.email.lower()))
     if ex.scalar_one_or_none():
         raise HTTPException(status_code=409, detail="البريد الإلكتروني مستخدم بالفعل")
+    ex_phone = await db.execute(select(User).where(User.phone == body.phone))
+    if ex_phone.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="رقم التليفون مستخدم بالفعل")
+
+    student_code = None
+    if current_user.teacher_code:
+        from sqlalchemy import func
+        count = await db.scalar(
+            select(func.count(User.id)).where(User.teacher_id == current_user.id)
+        )
+        student_code = f"{current_user.teacher_code}-{(count or 0) + 1:02d}"
 
     temp_password = _generate_default_password(body.full_name)
     student = User(
         email=body.email.lower(),
+        phone=body.phone,
         full_name=body.full_name,
         hashed_password=hash_password(temp_password),
         role=UserRole.STUDENT,
         status=AccountStatus.ACTIVE,
         teacher_id=current_user.id,
+        student_code=student_code,
         must_change_password=True,
     )
     db.add(student)
@@ -148,6 +162,8 @@ def _serialize_student(s: User) -> dict:
         "id": str(s.id),
         "full_name": s.full_name,
         "email": s.email,
+        "phone": s.phone,
+        "student_code": s.student_code,
         "status": s.status.value,
         "plan": s.plan.value,
         "ai_assist_enabled": s.ai_assist_enabled,

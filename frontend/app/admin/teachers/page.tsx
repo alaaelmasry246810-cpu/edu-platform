@@ -33,7 +33,7 @@ export default function AdminTeachersPage() {
   const [showForm, setShowForm] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedTeacher, setSelectedTeacher] = useState<Teacher | null>(null);
-  const [form, setForm] = useState({ full_name: "", email: "", password: "" });
+  const [form, setForm] = useState({ full_name: "", email: "", phone: "", password: "" });
   const [formFeatures, setFormFeatures] = useState<Record<string, boolean>>(
     Object.fromEntries(FEATURE_FLAGS.map(f => [f.key, false]))
   );
@@ -57,7 +57,7 @@ export default function AdminTeachersPage() {
       await api.post("/admin/teachers", { ...form, features: formFeatures });
       toast.success(t("admin.teachers.createSuccess"));
       setShowForm(false);
-      setForm({ full_name: "", email: "", password: "" });
+      setForm({ full_name: "", email: "", phone: "", password: "" });
       setFormFeatures(Object.fromEntries(FEATURE_FLAGS.map(f => [f.key, false])));
       load();
     } catch (e: any) {
@@ -143,7 +143,7 @@ export default function AdminTeachersPage() {
       {showForm && (
         <form onSubmit={handleCreate} className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 mb-6 shadow-sm">
           <h2 className="font-bold text-slate-800 dark:text-white mb-5">{t("admin.teachers.createFormTitle")}</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
             <div>
               <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">{t("admin.teachers.fullName")}</label>
               <input
@@ -161,6 +161,17 @@ export default function AdminTeachersPage() {
                 type="email"
                 value={form.email}
                 onChange={e => setForm({ ...form, email: e.target.value })}
+                className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">{t("admin.teachers.phone")}</label>
+              <input
+                required
+                type="tel"
+                dir="ltr"
+                value={form.phone}
+                onChange={e => setForm({ ...form, phone: e.target.value })}
                 className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>

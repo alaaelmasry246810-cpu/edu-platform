@@ -4,6 +4,7 @@ import { persist } from "zustand/middleware";
 interface User {
   id: string;
   email: string;
+  phone?: string | null;
   full_name: string;
   role: "student" | "teacher" | "admin";
   status: string;
@@ -14,6 +15,8 @@ interface User {
   must_change_password?: boolean;
   teacher_features?: Record<string, boolean> | null;
   channel_links?: { label: string; url: string }[] | null;
+  teacher_code?: string | null;
+  student_code?: string | null;
 }
 
 interface AuthState {

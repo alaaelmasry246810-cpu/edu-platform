@@ -47,6 +47,9 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
         <div className="flex items-center gap-3">
           <LanguageSwitcher />
           <span className="text-sm text-slate-500">{user?.full_name}</span>
+          <Link href="/auth/change-password" className="text-xs text-slate-500 hover:text-blue-600 transition-colors">
+            🔒 {t("sidebar.changePassword")}
+          </Link>
           <button onClick={handleLogout} className="text-xs text-slate-500 hover:text-red-600 transition-colors">
             {t("sidebar.logout")} →
           </button>

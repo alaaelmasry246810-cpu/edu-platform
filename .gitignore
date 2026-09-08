@@ -3,6 +3,7 @@
 .env.local
 .env.*.local
 api.txt
+ACCESS_INFO.txt
 *.pem
 *.key
 

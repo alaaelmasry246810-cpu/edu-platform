@@ -21,10 +21,10 @@ export default function StudentsPage() {
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newStudent, setNewStudent] = useState({ full_name: "", email: "" });
+  const [newStudent, setNewStudent] = useState({ full_name: "", email: "", phone: "" });
   const [creating, setCreating] = useState(false);
   const [resettingId, setResettingId] = useState<string | null>(null);
-  const [credentials, setCredentials] = useState<{ full_name: string; email: string; temporary_password: string } | null>(null);
+  const [credentials, setCredentials] = useState<{ full_name: string; email: string; student_code?: string | null; temporary_password: string } | null>(null);
 
   const STATUS_LABEL: Record<string, string> = {
     active: t("teacher.students.status.active"),
@@ -51,9 +51,9 @@ export default function StudentsPage() {
     setCreating(true);
     try {
       const { data } = await teacherAPI.createStudent(newStudent);
-      setCredentials({ full_name: data.full_name, email: data.email, temporary_password: data.temporary_password });
+      setCredentials({ full_name: data.full_name, email: data.email, student_code: data.student_code, temporary_password: data.temporary_password });
       setShowAddForm(false);
-      setNewStudent({ full_name: "", email: "" });
+      setNewStudent({ full_name: "", email: "", phone: "" });
       load();
     } catch (e: any) {
       toast.error(e.response?.data?.detail || t("teacher.students.addStudent.error"));
@@ -78,7 +78,7 @@ export default function StudentsPage() {
   const copyCredentials = () => {
     if (!credentials) return;
     navigator.clipboard.writeText(
-      `${credentials.email}\n${credentials.temporary_password}`
+      [credentials.email, credentials.student_code, credentials.temporary_password].filter(Boolean).join("\n")
     );
     toast.success(t("teacher.students.addStudent.copied"));
   };
@@ -141,7 +141,7 @@ export default function StudentsPage() {
       {showAddForm && (
         <form onSubmit={handleCreateStudent} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5 mb-6 shadow-sm">
           <h2 className="font-bold text-slate-800 dark:text-white mb-4">{t("teacher.students.addStudent.formTitle")}</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
             <div>
               <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">{t("teacher.students.addStudent.fullName")}</label>
               <input
@@ -155,6 +155,14 @@ export default function StudentsPage() {
               <input
                 required type="email" value={newStudent.email}
                 onChange={e => setNewStudent({ ...newStudent, email: e.target.value })}
+                className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">{t("auth.fields.phone")}</label>
+              <input
+                required type="tel" dir="ltr" value={newStudent.phone}
+                onChange={e => setNewStudent({ ...newStudent, phone: e.target.value })}
                 className="w-full border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -184,6 +192,9 @@ export default function StudentsPage() {
             <p className="text-xs text-amber-600 dark:text-amber-400 mb-4">{t("teacher.students.addStudent.oneTimeWarning")}</p>
             <div className="bg-slate-50 dark:bg-slate-900 rounded-xl p-4 space-y-2 mb-4">
               <div className="text-sm"><span className="text-slate-400">{t("teacher.students.addStudent.email")}: </span><span className="font-mono text-slate-800 dark:text-slate-200">{credentials.email}</span></div>
+              {credentials.student_code && (
+                <div className="text-sm"><span className="text-slate-400">{t("teacher.students.addStudent.studentCode")}: </span><span className="font-mono text-slate-800 dark:text-slate-200">{credentials.student_code}</span></div>
+              )}
               <div className="text-sm"><span className="text-slate-400">{t("teacher.students.addStudent.tempPassword")}: </span><span className="font-mono font-bold text-slate-800 dark:text-slate-200">{credentials.temporary_password}</span></div>
             </div>
             <div className="flex gap-3">
@@ -223,6 +234,7 @@ export default function StudentsPage() {
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-700 text-xs text-slate-500 uppercase bg-slate-50 dark:bg-slate-900">
                   <th className="text-right px-4 py-3">{t("teacher.students.table.name")}</th>
+                  <th className="text-right px-4 py-3">{t("teacher.students.table.code")}</th>
                   <th className="text-right px-4 py-3">{t("teacher.students.table.email")}</th>
                   <th className="text-right px-4 py-3">{t("teacher.students.table.status")}</th>
                   <th className="text-right px-4 py-3">{t("teacher.students.table.plan")}</th>
@@ -235,7 +247,8 @@ export default function StudentsPage() {
                 {filtered.map(s => (
                   <tr key={s.id} className="border-b border-slate-100 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700/30 transition-colors">
                     <td className="px-4 py-3 font-medium text-slate-700 dark:text-slate-300">{s.full_name}</td>
-                    <td className="px-4 py-3 text-slate-500 text-xs">{s.email}</td>
+                    <td className="px-4 py-3 text-slate-500 text-xs font-mono">{s.student_code ?? "—"}</td>
+                    <td className="px-4 py-3 text-slate-500 text-xs">{s.email}<div className="text-slate-400">{s.phone}</div></td>
                     <td className="px-4 py-3">
                       <span className={clsx("text-xs px-2.5 py-1 rounded-full font-medium", STATUS_COLOR[s.status] ?? "bg-slate-100 text-slate-600")}>
                         {STATUS_LABEL[s.status] ?? s.status}
