@@ -24,4 +24,10 @@ COPY . .
 
 RUN mkdir -p /app/uploads
 
+# Hugging Face Spaces runs containers as UID 1000 regardless of the Dockerfile's
+# USER directive, so the app dir must be writable by a non-root user.
+RUN chmod -R 777 /app
+
+EXPOSE 8000
+
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
