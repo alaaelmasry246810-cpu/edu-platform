@@ -1,4 +1,5 @@
-"""OCR & Document Parsing Service — extracts text from PDF, images, QR codes."""
+"""OCR & Document Parsing Service — extracts text from PDF and images via OpenAI Vision."""
+import base64
 import io
 import re
 from pathlib import Path
@@ -6,9 +7,11 @@ from typing import NamedTuple
 
 import fitz  # PyMuPDF
 from PIL import Image
-import pytesseract
-import cv2
-import numpy as np
+from openai import AsyncOpenAI
+
+from app.config import settings
+
+client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
 
 
 class PageText(NamedTuple):
@@ -20,7 +23,10 @@ class PageText(NamedTuple):
 class DocumentParser:
     """Extracts text from PDFs (text-based or scanned) and images."""
 
-    TESSERACT_LANGS = "ara+eng"
+    OCR_PROMPT = (
+        "استخرج كل النص الموجود في هذه الصورة بالضبط كما هو مكتوب، "
+        "من غير أي تعليق أو شرح إضافي. لو الصورة مفيهاش نص واضح، رد بسلسلة فاضية."
+    )
 
     async def parse_pdf(self, file_path: str) -> list[PageText]:
         pages: list[PageText] = []
@@ -32,12 +38,11 @@ class DocumentParser:
             confidence = 1.0
 
             if len(text) < 50:
-                # Scanned page — render and OCR
+                # Scanned page — render and OCR via vision model
                 mat = fitz.Matrix(2.0, 2.0)  # 2x zoom for quality
                 pix = page.get_pixmap(matrix=mat)
                 img_bytes = pix.tobytes("png")
-                img = Image.open(io.BytesIO(img_bytes))
-                text, confidence = self._ocr_image(img)
+                text, confidence = await self._ocr_image_bytes(img_bytes)
 
             pages.append(PageText(page_num=i + 1, text=text, confidence=confidence))
 
@@ -46,34 +51,29 @@ class DocumentParser:
 
     async def parse_image(self, file_path: str) -> PageText:
         img = Image.open(file_path)
-        text, confidence = self._ocr_image(img)
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        text, confidence = await self._ocr_image_bytes(buf.getvalue())
         return PageText(page_num=1, text=text, confidence=confidence)
 
-    def _ocr_image(self, img: Image.Image) -> tuple[str, float]:
-        img_cv = cv2.cvtColor(np.array(img), cv2.COLOR_RGB2BGR)
-        # Preprocessing for better accuracy
-        gray = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
-        denoised = cv2.fastNlMeansDenoising(gray, h=10)
-        _, binary = cv2.threshold(denoised, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-
-        pil_clean = Image.fromarray(binary)
-        data = pytesseract.image_to_data(
-            pil_clean, lang=self.TESSERACT_LANGS,
-            output_type=pytesseract.Output.DICT
+    async def _ocr_image_bytes(self, img_bytes: bytes) -> tuple[str, float]:
+        b64 = base64.b64encode(img_bytes).decode()
+        response = await client.chat.completions.create(
+            model=settings.AI_MODEL,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": self.OCR_PROMPT},
+                        {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64}"}},
+                    ],
+                }
+            ],
+            temperature=0,
         )
-
-        words = [w for w, c in zip(data["text"], data["conf"]) if int(c) > 40 and w.strip()]
-        text = " ".join(words)
-        confidences = [int(c) for c in data["conf"] if int(c) > 0]
-        avg_conf = sum(confidences) / len(confidences) / 100 if confidences else 0.5
-        return text, avg_conf
-
-    async def extract_qr_url(self, file_path: str) -> list[str]:
-        """Extract URLs from QR codes in an image."""
-        img = cv2.imread(file_path)
-        detector = cv2.QRCodeDetector()
-        data, _, _ = detector.detectAndDecodeMulti(img)
-        return [d for d in (data or []) if d]
+        text = (response.choices[0].message.content or "").strip()
+        confidence = 0.9 if text else 0.0
+        return text, confidence
 
 
 class CurriculumChunker:

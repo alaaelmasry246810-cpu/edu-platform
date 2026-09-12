@@ -16,12 +16,9 @@ openai==1.50.0
 qdrant-client==1.11.3
 tiktoken==0.7.0
 
-# OCR & Document Processing
+# Document Processing (OCR handled via OpenAI Vision, no local tesseract/opencv needed)
 pymupdf==1.24.10
 pillow==10.4.0
-pytesseract==0.3.13
-qrcode==7.4.2
-opencv-python-headless==4.10.0.84
 
 # Payments
 stripe==10.12.0
