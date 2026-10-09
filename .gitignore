@@ -41,3 +41,6 @@ backend/_test_ids.json
 backend/_make_test_pdf.py
 backend/test_curriculum.pdf
 .playwright-mcp/
+
+# Ready-to-copy production env values (secrets) — never commit
+back4app-env.txt
