@@ -6,13 +6,16 @@ import toast from "react-hot-toast";
 import clsx from "clsx";
 import FlashcardDeck from "@/components/lesson/FlashcardDeck";
 import VideoPlayer from "@/components/lesson/VideoPlayer";
+import LessonVideos from "@/components/video/LessonVideos";
 import { useI18n } from "@/lib/i18n";
+import { useAuthStore } from "@/lib/store";
 
 type Tab = "explanation" | "summary" | "key-terms" | "questions" | "flashcards" | "video";
 
 export default function LessonsPage() {
   const { id } = useParams<{ id: string }>();
   const { t, dir } = useI18n();
+  const { user } = useAuthStore();
   const [structure, setStructure] = useState<any>(null);
   const [activeLesson, setActiveLesson] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<Tab>("explanation");
@@ -23,10 +26,16 @@ export default function LessonsPage() {
   const [resettingCards, setResettingCards] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
+  const isExam = structure?.curriculum?.content_type === "exam";
+  // Only the owning teacher (or admin) may edit/delete shared lesson content
+  // — students reach this same page to study their teacher's curricula.
+  const canManage = user?.role === "teacher" || user?.role === "admin";
+
   useEffect(() => {
     curriculumAPI.structure(id)
       .then(({ data }) => {
         setStructure(data);
+        if (data.curriculum?.content_type === "exam") setActiveTab("questions");
         const first = data.units?.[0]?.lessons?.[0];
         if (first) setActiveLesson(first);
       })
@@ -57,13 +66,18 @@ export default function LessonsPage() {
         const { data } = await aiAPI.keyTerms(activeLesson.id);
         setContent(data.key_terms);
       } else if (tab === "questions") {
-        const { data } = await aiAPI.generateQuestions(id, {
-          lesson_id: activeLesson.id,
-          types: ["mcq", "true_false", "why"],
-          count: 10,
-          difficulty: "medium",
-        });
-        setQuestions(data.questions);
+        if (isExam) {
+          const { data } = await curriculumAPI.lessonQuestions(id, activeLesson.id);
+          setQuestions(data.questions ?? []);
+        } else {
+          const { data } = await aiAPI.generateQuestions(id, {
+            lesson_id: activeLesson.id,
+            types: ["mcq", "true_false", "why"],
+            count: 10,
+            difficulty: "medium",
+          });
+          setQuestions(data.questions);
+        }
       } else if (tab === "flashcards") {
         const { data } = await aiAPI.flashcards(activeLesson.id);
         setFlashcards(data.flashcards ?? []);
@@ -91,14 +105,27 @@ export default function LessonsPage() {
     }
   };
 
-  const tabs: { key: Tab; label: string; icon: string; badge?: string }[] = [
-    { key: "explanation", label: t("dashboard.lessons.tabs.explanation"), icon: "📝" },
-    { key: "summary", label: t("dashboard.lessons.tabs.summary"), icon: "✨" },
-    { key: "key-terms", label: t("dashboard.lessons.tabs.keyTerms"), icon: "🔑" },
-    { key: "flashcards", label: t("dashboard.lessons.tabs.flashcards"), icon: "🃏", badge: t("dashboard.lessons.newBadge") },
-    { key: "video", label: t("dashboard.lessons.tabs.video"), icon: "🎬" },
-    { key: "questions", label: t("dashboard.lessons.tabs.questions"), icon: "❓" },
-  ];
+  const handleDeleteQuestion = async (questionId: string) => {
+    if (!confirm(t("dashboard.lessons.question.deleteConfirm"))) return;
+    try {
+      await curriculumAPI.deleteLessonQuestion(id, activeLesson.id, questionId);
+      setQuestions((qs) => qs.filter((q) => q.id !== questionId));
+      toast.success(t("dashboard.lessons.question.deleteSuccess"));
+    } catch {
+      toast.error(t("dashboard.lessons.question.deleteError"));
+    }
+  };
+
+  const tabs: { key: Tab; label: string; icon: string; badge?: string }[] = isExam
+    ? [{ key: "questions", label: t("dashboard.lessons.tabs.questions"), icon: "❓" }]
+    : [
+        { key: "explanation", label: t("dashboard.lessons.tabs.explanation"), icon: "📝" },
+        { key: "summary", label: t("dashboard.lessons.tabs.summary"), icon: "✨" },
+        { key: "key-terms", label: t("dashboard.lessons.tabs.keyTerms"), icon: "🔑" },
+        { key: "flashcards", label: t("dashboard.lessons.tabs.flashcards"), icon: "🃏", badge: t("dashboard.lessons.newBadge") },
+        { key: "video", label: t("dashboard.lessons.tabs.video"), icon: "🎬" },
+        { key: "questions", label: t("dashboard.lessons.tabs.questions"), icon: "❓" },
+      ];
 
   return (
     <div className="flex gap-5 h-full" dir={dir}>
@@ -217,13 +244,25 @@ export default function LessonsPage() {
                 </div>
               ) : activeTab === "questions" && questions.length > 0 ? (
                 <div className="space-y-4">
-                  {questions.map((q, i) => <QuestionCard key={i} q={q} index={i} />)}
+                  {questions.map((q, i) => (
+                    <QuestionCard
+                      key={q.id ?? i}
+                      q={q}
+                      index={i}
+                      onDelete={isExam && canManage && q.id ? () => handleDeleteQuestion(q.id) : undefined}
+                    />
+                  ))}
+                </div>
+              ) : activeTab === "questions" && isExam && !loading ? (
+                <div className="text-center py-16 text-slate-400">
+                  <div className="text-4xl mb-3">❓</div>
+                  <p>{t("dashboard.lessons.noExtractedQuestions")}</p>
                 </div>
               ) : activeTab === "flashcards" ? (
                 flashcards.length > 0 ? (
                   <FlashcardDeck
                     cards={flashcards}
-                    onReset={handleResetFlashcards}
+                    onReset={canManage ? handleResetFlashcards : undefined}
                     resetting={resettingCards}
                   />
                 ) : !loading ? (
@@ -233,16 +272,27 @@ export default function LessonsPage() {
                   </div>
                 ) : null
               ) : activeTab === "video" ? (
+                <>
+                <LessonVideos
+                  curriculumId={id}
+                  lesson={activeLesson}
+                  unit={structure?.units?.find((u: any) => u.lessons.some((l: any) => l.id === activeLesson.id))}
+                  canManage={canManage}
+                />
+                {(canManage || activeLesson.video_url) && (
                 <VideoPlayer
+                  key={activeLesson.id}
                   lessonId={activeLesson.id}
                   lessonTitle={activeLesson.title}
                   initialUrl={activeLesson.video_url}
                   initialTitle={activeLesson.video_title}
-                  isOwner={true}
+                  isOwner={canManage}
                   onUpdate={(url, title) => {
                     setActiveLesson((l: any) => ({ ...l, video_url: url, video_title: title, has_video: !!url }));
                   }}
                 />
+                )}
+                </>
               ) : content ? (
                 <div className="ai-content text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap text-sm">
                   {content}
@@ -267,7 +317,7 @@ export default function LessonsPage() {
 }
 
 /* ─── Question Card ─── */
-function QuestionCard({ q, index }: { q: any; index: number }) {
+function QuestionCard({ q, index, onDelete }: { q: any; index: number; onDelete?: () => void }) {
   const { t } = useI18n();
   const [revealed, setRevealed] = useState(false);
 
@@ -277,7 +327,16 @@ function QuestionCard({ q, index }: { q: any; index: number }) {
         <span className="font-mono text-xs text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded flex-shrink-0">
           {q.type?.toUpperCase()}
         </span>
-        <p className="font-medium text-slate-800 dark:text-slate-200 text-sm">{q.question}</p>
+        <p className="font-medium text-slate-800 dark:text-slate-200 text-sm flex-1">{q.question}</p>
+        {onDelete && (
+          <button
+            onClick={onDelete}
+            title={t("dashboard.lessons.question.delete")}
+            className="text-slate-300 hover:text-red-600 dark:text-slate-600 dark:hover:text-red-400 transition-colors text-sm shrink-0"
+          >
+            🗑️
+          </button>
+        )}
       </div>
 
       {q.options && (

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { api, curriculumAPI } from "@/lib/api";
 import toast from "react-hot-toast";
 import clsx from "clsx";
 import { useI18n } from "@/lib/i18n";
@@ -9,6 +9,9 @@ interface SharedQuestion {
   id: string;
   teacher_id: string;
   is_mine: boolean;
+  curriculum_id: string | null;
+  unit_id: string | null;
+  lesson_id: string | null;
   question: string;
   question_type: string;
   correct_answer: string | null;
@@ -24,30 +27,106 @@ interface SharedQuestion {
 }
 
 const bankAPI = {
-  browse:  (params?: object) => api.get("/question-bank", { params }),
-  my:      ()               => api.get("/question-bank/my"),
-  publish: (data: object)   => api.post("/question-bank", data),
-  delete:  (id: string)     => api.delete(`/question-bank/${id}`),
-  import:  (id: string)     => api.post(`/question-bank/${id}/import`),
+  browse:      (params?: object) => api.get("/question-bank", { params }),
+  my:          ()               => api.get("/question-bank/my"),
+  publish:     (data: object)   => api.post("/question-bank", data),
+  delete:      (id: string)     => api.delete(`/question-bank/${id}`),
+  import:      (id: string)     => api.post(`/question-bank/${id}/import`),
+  generate:    (data: object)   => api.post("/question-bank/generate", data),
+  publishBatch:(data: object)   => api.post("/question-bank/publish-batch", data),
 };
+
+interface GeneratedCandidate {
+  type: string;
+  question: string;
+  options?: string[] | null;
+  correct_answer?: string | null;
+  explanation?: string | null;
+}
+
+const GEN_TYPES = ["mcq", "true_false", "fill_blank", "why", "essay"];
+// Graded by exact match — publishing one of these without an answer would
+// mark every student wrong no matter what they pick, so the backend skips
+// them; flag them here too so the teacher isn't surprised.
+const AUTO_GRADED_TYPES = new Set(["mcq", "true_false", "fill_blank"]);
+const isMissingAnswer = (c: GeneratedCandidate) => AUTO_GRADED_TYPES.has(c.type) && !c.correct_answer?.trim();
 
 const EMPTY_FORM = {
   question: "", question_type: "mcq", correct_answer: "",
   options: ["", "", "", ""], explanation: "", difficulty: "medium",
   subject_tag: "", grade_level: "", points: 2, is_public: true,
+  curriculum_id: "", unit_id: "", lesson_id: "",
 };
 
 export default function QuestionBankPage() {
   const { t, dir } = useI18n();
-  const [tab, setTab] = useState<"browse" | "my" | "publish">("browse");
+  const [tab, setTab] = useState<"browse" | "my" | "publish" | "generate">("browse");
   const [questions, setQuestions] = useState<SharedQuestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
   const [diffFilter, setDiffFilter] = useState("");
+  const [curriculumFilter, setCurriculumFilter] = useState("");
+  const [unitFilter, setUnitFilter] = useState("");
+  const [lessonFilter, setLessonFilter] = useState("");
+  const [filterUnits, setFilterUnits] = useState<any[]>([]);
+  const [curricula, setCurricula] = useState<any[]>([]);
+  const [units, setUnits] = useState<any[]>([]);
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [saving, setSaving] = useState(false);
   const [imported, setImported] = useState<Set<string>>(new Set());
+
+  // Generate-from-curriculum tab
+  const [genCurriculumId, setGenCurriculumId] = useState("");
+  const [genUnitId, setGenUnitId] = useState("");
+  const [genLessonId, setGenLessonId] = useState("");
+  const [genUnits, setGenUnits] = useState<any[]>([]);
+  const [genTypes, setGenTypes] = useState<string[]>(["mcq", "true_false", "why"]);
+  const [genCount, setGenCount] = useState(10);
+  const [genDifficulty, setGenDifficulty] = useState("medium");
+  const [genLoading, setGenLoading] = useState(false);
+  const [genSource, setGenSource] = useState<string | null>(null);
+  const [candidates, setCandidates] = useState<GeneratedCandidate[]>([]);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [publishing, setPublishing] = useState(false);
+
+  // Where to attach the reviewed candidates so they actually feed into that
+  // curriculum's practices/exams — separate from the source above, since the
+  // most common case for an "exam paper" curriculum is extracting its
+  // questions and pooling them under the real teaching curriculum instead.
+  const [destCurriculumId, setDestCurriculumId] = useState("");
+  const [destUnitId, setDestUnitId] = useState("");
+  const [destLessonId, setDestLessonId] = useState("");
+  const [destUnits, setDestUnits] = useState<any[]>([]);
+
+  useEffect(() => {
+    curriculumAPI.list().then(({ data }) => setCurricula(data.filter((c: any) => c.status === "completed"))).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!form.curriculum_id) { setUnits([]); return; }
+    curriculumAPI.structure(form.curriculum_id).then(({ data }) => setUnits(data.units || [])).catch(() => setUnits([]));
+  }, [form.curriculum_id]);
+
+  useEffect(() => {
+    if (!curriculumFilter) { setFilterUnits([]); return; }
+    curriculumAPI.structure(curriculumFilter).then(({ data }) => setFilterUnits(data.units || [])).catch(() => setFilterUnits([]));
+  }, [curriculumFilter]);
+
+  useEffect(() => {
+    if (!genCurriculumId) { setGenUnits([]); return; }
+    curriculumAPI.structure(genCurriculumId).then(({ data }) => setGenUnits(data.units || [])).catch(() => setGenUnits([]));
+  }, [genCurriculumId]);
+
+  useEffect(() => {
+    if (!destCurriculumId) { setDestUnits([]); return; }
+    curriculumAPI.structure(destCurriculumId).then(({ data }) => setDestUnits(data.units || [])).catch(() => setDestUnits([]));
+  }, [destCurriculumId]);
+
+  const selectedUnit = units.find((u) => u.id === form.unit_id);
+  const selectedFilterUnit = filterUnits.find((u) => u.id === unitFilter);
+  const selectedGenUnit = genUnits.find((u) => u.id === genUnitId);
+  const selectedDestUnit = destUnits.find((u) => u.id === destUnitId);
 
   const TYPE_LABELS: Record<string, string> = {
     mcq: t("teacher.questionBank.types.mcq"),
@@ -69,6 +148,9 @@ export default function QuestionBankPage() {
         search: search || undefined,
         question_type: typeFilter || undefined,
         difficulty: diffFilter || undefined,
+        curriculum_id: curriculumFilter || undefined,
+        unit_id: unitFilter || undefined,
+        lesson_id: lessonFilter || undefined,
         limit: 50,
       });
       setQuestions(data.questions);
@@ -102,6 +184,9 @@ export default function QuestionBankPage() {
         subject_tag: form.subject_tag || null,
         grade_level: form.grade_level || null,
         explanation: form.explanation || null,
+        curriculum_id: form.curriculum_id || null,
+        unit_id: form.unit_id || null,
+        lesson_id: form.lesson_id || null,
       };
       await bankAPI.publish(body);
       toast.success(t("teacher.questionBank.publishSuccess"));
@@ -115,6 +200,7 @@ export default function QuestionBankPage() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!confirm(t("teacher.questionBank.deleteConfirm"))) return;
     try {
       await bankAPI.delete(id);
       setQuestions(prev => prev.filter(q => q.id !== id));
@@ -128,6 +214,79 @@ export default function QuestionBankPage() {
       setImported(prev => new Set([...prev, q.id]));
       toast.success(t("teacher.questionBank.importSuccess"));
     } catch { toast.error(t("teacher.questionBank.importError")); }
+  };
+
+  const toggleGenType = (type: string) => {
+    setGenTypes(prev => prev.includes(type) ? prev.filter(t2 => t2 !== type) : [...prev, type]);
+  };
+
+  const toggleCandidate = (i: number) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(i) ? next.delete(i) : next.add(i);
+      return next;
+    });
+  };
+
+  const handleGenerate = async () => {
+    if (!genCurriculumId) { toast.error(t("teacher.questionBank.generate.curriculumRequired")); return; }
+    if (!genTypes.length) { toast.error(t("teacher.questionBank.generate.typesRequired")); return; }
+    setGenLoading(true);
+    setCandidates([]);
+    setSelected(new Set());
+    try {
+      const { data } = await bankAPI.generate({
+        curriculum_id: genCurriculumId,
+        unit_id: genUnitId || undefined,
+        lesson_id: genLessonId || undefined,
+        types: genTypes,
+        count: genCount,
+        difficulty: genDifficulty,
+      });
+      setCandidates(data.questions || []);
+      setGenSource(data.source);
+      setSelected(new Set((data.questions || []).map((_: any, i: number) => i)));
+      // Default the destination to the source curriculum/unit/lesson — the
+      // teacher can repoint it below (e.g. extracting from a standalone exam
+      // paper to pool the questions under the real teaching curriculum).
+      setDestCurriculumId(genCurriculumId);
+      setDestUnitId(genUnitId);
+      setDestLessonId(genLessonId);
+      if (!data.questions?.length) toast.error(t("teacher.questionBank.generate.noResults"));
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || t("teacher.questionBank.generate.generateError"));
+    } finally {
+      setGenLoading(false);
+    }
+  };
+
+  const handlePublishSelected = async () => {
+    const toPublish = candidates.filter((_, i) => selected.has(i));
+    if (!toPublish.length) { toast.error(t("teacher.questionBank.generate.selectAtLeastOne")); return; }
+    if (!destCurriculumId) { toast.error(t("teacher.questionBank.generate.destCurriculumRequired")); return; }
+    setPublishing(true);
+    try {
+      const { data } = await bankAPI.publishBatch({
+        curriculum_id: destCurriculumId,
+        unit_id: destUnitId || undefined,
+        lesson_id: destLessonId || undefined,
+        difficulty: genDifficulty,
+        questions: toPublish.map(c => ({
+          question: c.question,
+          question_type: c.type,
+          correct_answer: c.correct_answer ?? null,
+          options: c.options ?? null,
+          explanation: c.explanation ?? null,
+        })),
+      });
+      toast.success(t("teacher.questionBank.generate.publishSuccess", { n: data.published }));
+      setCandidates(prev => prev.filter((_, i) => !selected.has(i)));
+      setSelected(new Set());
+    } catch (err: any) {
+      toast.error(err.response?.data?.detail || t("teacher.questionBank.publishError"));
+    } finally {
+      setPublishing(false);
+    }
   };
 
   const inputCls = "w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500";
@@ -145,6 +304,7 @@ export default function QuestionBankPage() {
           { key: "browse", label: t("teacher.questionBank.tabs.browse") },
           { key: "my",     label: t("teacher.questionBank.tabs.my") },
           { key: "publish", label: t("teacher.questionBank.tabs.publish") },
+          { key: "generate", label: t("teacher.questionBank.tabs.generate") },
         ].map(tabItem => (
           <button
             key={tabItem.key}
@@ -181,6 +341,36 @@ export default function QuestionBankPage() {
               <option value="">{t("teacher.questionBank.allLevels")}</option>
               {Object.entries(DIFF_LABELS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
             </select>
+            {curricula.length > 0 && (
+              <select
+                value={curriculumFilter}
+                onChange={e => { setCurriculumFilter(e.target.value); setUnitFilter(""); setLessonFilter(""); }}
+                className="border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-700 focus:outline-none"
+              >
+                <option value="">{t("teacher.questionBank.allCurricula")}</option>
+                {curricula.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+              </select>
+            )}
+            {filterUnits.length > 0 && (
+              <select
+                value={unitFilter}
+                onChange={e => { setUnitFilter(e.target.value); setLessonFilter(""); }}
+                className="border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-700 focus:outline-none"
+              >
+                <option value="">{t("teacher.questionBank.allUnits")}</option>
+                {filterUnits.map((u) => <option key={u.id} value={u.id}>{u.title}</option>)}
+              </select>
+            )}
+            {!!selectedFilterUnit?.lessons?.length && (
+              <select
+                value={lessonFilter}
+                onChange={e => setLessonFilter(e.target.value)}
+                className="border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm bg-white dark:bg-slate-700 focus:outline-none"
+              >
+                <option value="">{t("teacher.questionBank.allLessons")}</option>
+                {selectedFilterUnit.lessons.map((l: any) => <option key={l.id} value={l.id}>{l.title}</option>)}
+              </select>
+            )}
             <button onClick={fetchBrowse} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors">
               {t("teacher.questionBank.searchBtn")}
             </button>
@@ -238,6 +428,32 @@ export default function QuestionBankPage() {
             </div>
           </div>
 
+          {curricula.length > 0 && (
+            <div className="grid sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t("teacher.questionBank.form.curriculumLabel")}</label>
+                <select value={form.curriculum_id} onChange={e => setForm(f => ({ ...f, curriculum_id: e.target.value, unit_id: "", lesson_id: "" }))} className={inputCls}>
+                  <option value="">{t("teacher.questionBank.form.curriculumPlaceholder")}</option>
+                  {curricula.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t("teacher.questionBank.form.unitLabel")}</label>
+                <select value={form.unit_id} onChange={e => setForm(f => ({ ...f, unit_id: e.target.value, lesson_id: "" }))} disabled={!form.curriculum_id} className={inputCls + " disabled:opacity-50"}>
+                  <option value="">{t("teacher.questionBank.form.unitPlaceholder")}</option>
+                  {units.map((u) => <option key={u.id} value={u.id}>{u.title}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t("teacher.questionBank.form.lessonLabel")}</label>
+                <select value={form.lesson_id} onChange={e => setForm(f => ({ ...f, lesson_id: e.target.value }))} disabled={!form.unit_id} className={inputCls + " disabled:opacity-50"}>
+                  <option value="">{t("teacher.questionBank.form.lessonPlaceholder")}</option>
+                  {(selectedUnit?.lessons || []).map((l: any) => <option key={l.id} value={l.id}>{l.title}</option>)}
+                </select>
+              </div>
+            </div>
+          )}
+
           {form.question_type === "mcq" && (
             <div>
               <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t("teacher.questionBank.form.optionsLabel")}</label>
@@ -283,6 +499,187 @@ export default function QuestionBankPage() {
             {saving ? t("teacher.questionBank.form.submitting") : t("teacher.questionBank.form.submit")}
           </button>
         </form>
+      )}
+
+      {/* Generate-from-curriculum tab */}
+      {tab === "generate" && (
+        <div className="max-w-2xl space-y-5">
+          <p className="text-sm text-slate-500">{t("teacher.questionBank.generate.subtitle")}</p>
+
+          <div className="grid sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t("teacher.questionBank.form.curriculumLabel")}</label>
+              <select
+                value={genCurriculumId}
+                onChange={e => { setGenCurriculumId(e.target.value); setGenUnitId(""); setGenLessonId(""); setCandidates([]); }}
+                className={inputCls}
+              >
+                <option value="">{t("teacher.questionBank.form.curriculumPlaceholder")}</option>
+                {curricula.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t("teacher.questionBank.form.unitLabel")}</label>
+              <select
+                value={genUnitId}
+                onChange={e => { setGenUnitId(e.target.value); setGenLessonId(""); }}
+                disabled={!genCurriculumId}
+                className={inputCls + " disabled:opacity-50"}
+              >
+                <option value="">{t("teacher.questionBank.form.unitPlaceholder")}</option>
+                {genUnits.map((u) => <option key={u.id} value={u.id}>{u.title}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t("teacher.questionBank.form.lessonLabel")}</label>
+              <select
+                value={genLessonId}
+                onChange={e => setGenLessonId(e.target.value)}
+                disabled={!genUnitId}
+                className={inputCls + " disabled:opacity-50"}
+              >
+                <option value="">{t("teacher.questionBank.form.lessonPlaceholder")}</option>
+                {(selectedGenUnit?.lessons || []).map((l: any) => <option key={l.id} value={l.id}>{l.title}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t("teacher.questionBank.generate.typesLabel")}</label>
+            <div className="flex flex-wrap gap-2">
+              {GEN_TYPES.map((type) => (
+                <button
+                  type="button"
+                  key={type}
+                  onClick={() => toggleGenType(type)}
+                  className={clsx(
+                    "px-3 py-1.5 rounded-full text-xs font-medium border transition-colors",
+                    genTypes.includes(type)
+                      ? "bg-blue-600 border-blue-600 text-white"
+                      : "bg-white dark:bg-slate-700 border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300"
+                  )}
+                >
+                  {TYPE_LABELS[type]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t("teacher.questionBank.generate.countLabel")}</label>
+              <input type="number" min={1} max={30} value={genCount}
+                onChange={e => setGenCount(parseInt(e.target.value, 10) || 1)}
+                className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">{t("teacher.questionBank.form.difficultyLabel")}</label>
+              <select value={genDifficulty} onChange={e => setGenDifficulty(e.target.value)} className={inputCls}>
+                {Object.entries(DIFF_LABELS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <button
+            onClick={handleGenerate}
+            disabled={genLoading || !genCurriculumId}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl text-sm transition-colors disabled:opacity-60"
+          >
+            {genLoading ? t("teacher.questionBank.generate.generating") : t("teacher.questionBank.generate.generateBtn")}
+          </button>
+
+          {candidates.length > 0 && (
+            <div className="space-y-3">
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                {genSource === "extracted"
+                  ? t("teacher.questionBank.generate.sourceExtracted")
+                  : t("teacher.questionBank.generate.sourceGenerated")}
+                {" · "}
+                {t("teacher.questionBank.generate.selectedCount", { n: selected.size, total: candidates.length })}
+              </p>
+
+              {/* Destination — where these questions get pooled for practices/exams.
+                  Defaults to the source above, but for an exam-paper source this is
+                  usually a different, real teaching curriculum. */}
+              <div className="bg-slate-50 dark:bg-slate-700/40 border border-slate-200 dark:border-slate-600 rounded-xl p-4 space-y-2">
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t("teacher.questionBank.generate.destinationLabel")}</p>
+                <div className="grid sm:grid-cols-3 gap-3">
+                  <select
+                    value={destCurriculumId}
+                    onChange={e => { setDestCurriculumId(e.target.value); setDestUnitId(""); setDestLessonId(""); }}
+                    className={inputCls}
+                  >
+                    <option value="">{t("teacher.questionBank.form.curriculumPlaceholder")}</option>
+                    {curricula.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+                  </select>
+                  <select
+                    value={destUnitId}
+                    onChange={e => { setDestUnitId(e.target.value); setDestLessonId(""); }}
+                    disabled={!destCurriculumId}
+                    className={inputCls + " disabled:opacity-50"}
+                  >
+                    <option value="">{t("teacher.questionBank.form.unitPlaceholder")}</option>
+                    {destUnits.map((u) => <option key={u.id} value={u.id}>{u.title}</option>)}
+                  </select>
+                  <select
+                    value={destLessonId}
+                    onChange={e => setDestLessonId(e.target.value)}
+                    disabled={!destUnitId}
+                    className={inputCls + " disabled:opacity-50"}
+                  >
+                    <option value="">{t("teacher.questionBank.form.lessonPlaceholder")}</option>
+                    {(selectedDestUnit?.lessons || []).map((l: any) => <option key={l.id} value={l.id}>{l.title}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <button
+                onClick={handlePublishSelected}
+                disabled={publishing || !selected.size}
+                className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60"
+              >
+                {publishing ? t("teacher.questionBank.form.submitting") : t("teacher.questionBank.generate.publishSelectedBtn")}
+              </button>
+
+              <div className="space-y-2">
+                {candidates.map((c, i) => (
+                  <label
+                    key={i}
+                    className={clsx(
+                      "flex items-start gap-3 bg-white dark:bg-slate-800 border rounded-2xl p-4 cursor-pointer transition-colors",
+                      selected.has(i) ? "border-blue-400" : "border-slate-200 dark:border-slate-700"
+                    )}
+                  >
+                    <input type="checkbox" checked={selected.has(i)} onChange={() => toggleCandidate(i)} className="w-4 h-4 mt-1 rounded shrink-0" />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full">{TYPE_LABELS[c.type] ?? c.type}</span>
+                        {isMissingAnswer(c) && (
+                          <span className="text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full">
+                            {t("teacher.questionBank.generate.missingAnswerBadge")}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm font-medium text-slate-800 dark:text-slate-200 leading-relaxed">{c.question}</p>
+                      {c.options && (
+                        <div className="mt-2 space-y-1">
+                          {c.options.map((opt, oi) => (
+                            <span key={oi} className={clsx("block text-xs text-slate-500", c.correct_answer === opt && "font-bold text-green-600 dark:text-green-400")}>
+                              {String.fromCharCode(0x0623 + oi)}) {opt} {c.correct_answer === opt && "✅"}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {c.correct_answer && !c.options && (
+                        <p className="text-xs text-green-700 dark:text-green-400 mt-1">{t("teacher.questionBank.correctAnswerShown", { answer: c.correct_answer })}</p>
+                      )}
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

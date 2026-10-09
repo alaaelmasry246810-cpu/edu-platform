@@ -13,6 +13,7 @@ from openai import AsyncOpenAI
 from app.database import get_db
 from app.config import settings
 from app.models.user import User, UserRole, AccountStatus
+from app.models.curriculum import Curriculum
 from app.models.exam import QuizAttempt, TeacherEvaluation, AttemptStatus, ExamTypeConfig, ExamType
 from app.middleware.auth import get_current_user, hash_password
 from app.services.notification_service import notify
@@ -335,7 +336,10 @@ async def evaluate_attempt(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Teacher grades open questions and approves/rejects the attempt."""
+    """Teacher grades any open questions and can also correct an individual
+    auto-graded question's score — manual_grades applies to any question
+    index present in it, not just ones flagged needs_manual — then
+    approves/rejects the attempt."""
     _require_teacher(current_user)
 
     r = await db.execute(select(QuizAttempt).where(QuizAttempt.id == attempt_id))
@@ -345,22 +349,22 @@ async def evaluate_attempt(
     if attempt.teacher_id != current_user.id and current_user.role != UserRole.ADMIN:
         raise HTTPException(status_code=403, detail="Forbidden")
 
-    # Apply manual grades to question_results
-    manual_total = 0.0
+    # Apply grade overrides to question_results — works for any question,
+    # not just ones needing manual review, so a teacher can also correct a
+    # specific auto-graded question they disagree with.
     updated_results = attempt.question_results or []
     for res in updated_results:
         idx_str = str(res["q_index"])
-        if res.get("needs_manual") and idx_str in body.manual_grades:
+        if idx_str in body.manual_grades:
             pts = float(body.manual_grades[idx_str])
             pts = max(0.0, min(pts, res["max_points"]))
             res["points_earned"] = pts
             res["is_correct"] = pts >= res["max_points"]
             res["needs_manual"] = False
-            manual_total += pts
 
     attempt.question_results = updated_results
-    attempt.manual_score = manual_total
-    attempt.total_score = (attempt.auto_score or 0) + manual_total
+    attempt.total_score = sum(r.get("points_earned") or 0 for r in updated_results)
+    attempt.manual_score = attempt.total_score - (attempt.auto_score or 0)
 
     if body.final_grade_override is not None:
         attempt.total_score = body.final_grade_override
@@ -432,7 +436,10 @@ async def ai_suggest_grades(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Use AI to suggest grades for open/essay questions in an attempt."""
+    """Use AI to suggest grades for questions still awaiting manual review in
+    an attempt — always essay, plus any other type whose source had no known
+    correct answer to auto-grade against (e.g. extracted from an exam paper
+    that never printed one)."""
     _require_teacher(current_user)
 
     r = await db.execute(select(QuizAttempt).where(QuizAttempt.id == attempt_id))
@@ -444,7 +451,7 @@ async def ai_suggest_grades(
 
     open_results = [
         r for r in (attempt.question_results or [])
-        if r.get("type") in ("why", "essay") or r.get("needs_manual")
+        if r.get("needs_manual")
     ]
     if not open_results:
         return {"suggestions": {}}
@@ -453,6 +460,7 @@ async def ai_suggest_grades(
     for res in open_results:
         q_index = res["q_index"]
         question_text = (attempt.questions or [])[q_index].get("question", "") if q_index < len(attempt.questions or []) else ""
+        options = res.get("options") or []
         student_answer = res.get("student_answer", "").strip()
         model_answer = res.get("correct_answer", "").strip()
         max_pts = res.get("max_points", 5)
@@ -461,11 +469,13 @@ async def ai_suggest_grades(
             suggestions[str(q_index)] = {"suggested_points": 0.0, "reasoning": "لم يُجب الطالب على هذا السؤال"}
             continue
 
+        options_line = f"\nالخيارات: {', '.join(options)}\n" if options else ""
+
         prompt = f"""أنت معلم خبير تصحح إجابات الطلاب.
 
 السؤال: {question_text}
-
-الإجابة النموذجية: {model_answer or "غير متوفرة"}
+{options_line}
+الإجابة النموذجية: {model_answer or "غير متوفرة — احكم بنفسك بناءً على معرفتك الصحيحة بالمادة"}
 
 إجابة الطالب: {student_answer}
 
@@ -510,16 +520,24 @@ REASON: [التبرير]"""
     return {"suggestions": suggestions}
 
 
-# ── Exam Type Config (admin sets, teachers can view) ──────────
+# ── Exam Type Config ────────────────────────────────────────────
+# Global defaults (curriculum_id=None) are admin-only. A teacher may create
+# or edit an override scoped to one of their own curricula.
 
 @router.get("/exam-configs")
 async def list_exam_configs(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """List all exam type configurations."""
+    """List exam type configurations — global defaults plus, for a teacher,
+    only the per-curriculum overrides on curricula they own (admin sees all)."""
     _require_teacher(current_user)
-    r = await db.execute(select(ExamTypeConfig).order_by(ExamTypeConfig.exam_type))
+    q = select(ExamTypeConfig).order_by(ExamTypeConfig.exam_type)
+    if current_user.role != UserRole.ADMIN:
+        owned = await db.execute(select(Curriculum.id).where(Curriculum.owner_id == current_user.id))
+        owned_ids = [row[0] for row in owned.all()]
+        q = q.where((ExamTypeConfig.curriculum_id == None) | (ExamTypeConfig.curriculum_id.in_(owned_ids)))
+    r = await db.execute(q)
     configs = r.scalars().all()
     return [{
         "id": str(c.id),
@@ -565,9 +583,20 @@ async def upsert_exam_config(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    """Admin creates or updates an exam type config."""
+    """Admin creates or updates any exam type config, including the global
+    default (curriculum_id=None). A teacher may only create/update an
+    override scoped to a curriculum they own."""
+    _require_teacher(current_user)
     if current_user.role != UserRole.ADMIN:
-        raise HTTPException(status_code=403, detail="Admins only")
+        if body.curriculum_id is None:
+            raise HTTPException(status_code=403, detail="Only admins can edit the global default")
+        owns = await db.execute(
+            select(Curriculum.id).where(
+                Curriculum.id == body.curriculum_id, Curriculum.owner_id == current_user.id
+            )
+        )
+        if not owns.scalar_one_or_none():
+            raise HTTPException(status_code=403, detail="Curriculum not found")
 
     r = await db.execute(
         select(ExamTypeConfig).where(

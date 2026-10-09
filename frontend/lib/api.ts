@@ -46,10 +46,16 @@ export const authAPI = {
 
 // ── Curriculum ────────────────────────────────────────────────
 export const curriculumAPI = {
-  list:      ()          => api.get("/curricula/"),
+  list:      (groupId?: string) => api.get("/curricula/", { params: groupId ? { group_id: groupId } : {} }),
   upload:    (form: FormData) => api.post("/curricula/upload", form),
   structure: (id: string)     => api.get(`/curricula/${id}/structure`),
   delete:    (id: string)     => api.delete(`/curricula/${id}`),
+  assignGroup: (id: string, groupId: string | null) => api.patch(`/curricula/${id}/group`, { group_id: groupId }),
+  createUploadSession: () => api.post("/curricula/upload-session"),
+  lessonQuestions: (curriculumId: string, lessonId: string) =>
+    api.get(`/curricula/${curriculumId}/lessons/${lessonId}/questions`),
+  deleteLessonQuestion: (curriculumId: string, lessonId: string, questionId: string) =>
+    api.delete(`/curricula/${curriculumId}/lessons/${lessonId}/questions/${questionId}`),
 };
 
 // ── AI / Lessons ──────────────────────────────────────────────
@@ -76,6 +82,8 @@ export const aiAPI = {
   adaptiveDifficulty:  (curriculumId?: string)    => api.get("/ai/student/adaptive-difficulty", { params: curriculumId ? { curriculum_id: curriculumId } : {} }),
   aiAssistStatus:      ()                         => api.get("/ai/student/ai-assist-status"),
   examHint:            (data: object)             => api.post("/ai/exam/hint", data),
+  checkAnswer:         (attemptId: string, data: { q_index: number; answer: string }) =>
+    api.post(`/ai/exam/${attemptId}/check`, data),
 };
 
 // ── Teacher ───────────────────────────────────────────────────
@@ -150,9 +158,42 @@ export const scheduleAPI = {
 
 // ── Question Bank ─────────────────────────────────────────────
 export const questionBankAPI = {
-  browse:  (params?: object)           => api.get("/question-bank", { params }),
-  my:      ()                          => api.get("/question-bank/my"),
-  publish: (data: object)              => api.post("/question-bank", data),
-  delete:  (id: string)               => api.delete(`/question-bank/${id}`),
-  import:  (id: string)               => api.post(`/question-bank/${id}/import`),
+  browse:      (params?: object)       => api.get("/question-bank", { params }),
+  my:          ()                      => api.get("/question-bank/my"),
+  publish:     (data: object)          => api.post("/question-bank", data),
+  delete:      (id: string)            => api.delete(`/question-bank/${id}`),
+  import:      (id: string)            => api.post(`/question-bank/${id}/import`),
+  generate:    (data: object)          => api.post("/question-bank/generate", data),
+  publishBatch:(data: object)          => api.post("/question-bank/publish-batch", data),
 };
+
+// ── Assignments (teacher-assigned exams/practice) ───────────────
+export const assignmentAPI = {
+  createGroup: (data: { name: string; student_ids: string[] })          => api.post("/assignments/groups", data),
+  listGroups:  ()                                                        => api.get("/assignments/groups"),
+  updateGroup: (id: string, data: { name: string; student_ids: string[] }) => api.put(`/assignments/groups/${id}`, data),
+  deleteGroup: (id: string)                                              => api.delete(`/assignments/groups/${id}`),
+  create:      (data: object)                                            => api.post("/assignments", data),
+  list:        ()                                                        => api.get("/assignments"),
+  detail:      (id: string)                                              => api.get(`/assignments/${id}`),
+  mine:        ()                                                        => api.get("/assignments/mine"),
+  start:       (id: string)                                              => api.post(`/assignments/${id}/start`),
+};
+
+// ── Interactive videos ────────────────────────────────────────
+export const videosAPI = {
+  list:            (params: { lesson_id?: string; unit_id?: string; curriculum_id?: string }) => api.get("/videos/", { params }),
+  get:             (id: string)               => api.get(`/videos/${id}`),
+  voices:          ()                         => api.get("/videos/voices"),
+  createAI:        (data: object)             => api.post("/videos/ai", data),
+  createPodcast:   (form: FormData, onUploadProgress?: (e: any) => void) => api.post("/videos/podcast", form, { onUploadProgress }),
+  upload:          (form: FormData, onUploadProgress?: (e: any) => void) => api.post("/videos/upload", form, { onUploadProgress }),
+  update:          (id: string, data: object) => api.patch(`/videos/${id}`, data),
+  regenerate:      (id: string, sceneCount?: number) => api.post(`/videos/${id}/regenerate`, null, { params: sceneCount ? { scene_count: sceneCount } : {} }),
+  regenerateAudio: (id: string, onlyMissing = true) => api.post(`/videos/${id}/regenerate-audio`, null, { params: { only_missing: onlyMissing } }),
+  delete:          (id: string)               => api.delete(`/videos/${id}`),
+};
+
+/** Backend-served files (e.g. "/uploads/...") need the API origin in front. */
+export const mediaUrl = (path?: string | null) =>
+  !path ? "" : /^https?:\/\//.test(path) ? path : `${API_BASE}${path}`;

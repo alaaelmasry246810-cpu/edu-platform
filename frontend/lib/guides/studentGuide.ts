@@ -16,8 +16,18 @@ export function getStudentGuide(locale: "ar" | "en"): { title: string; subtitle:
         {
           icon: "✏️", title: "Exams", desc: "Take a lesson quiz, unit test, or full exam",
           items: [
-            { label: "Create a custom exam", desc: "Choose the curriculum and exam type — the AI generates questions from your material" },
+            { label: "Create a custom exam", desc: "Choose the curriculum and exam type — questions come from your teacher's material and question bank, topped up by AI-generated ones" },
             { label: "AI hints", desc: "If your teacher enabled AI assist for you, you can get a hint while solving without seeing the answer directly" },
+            { label: "Instant grading", desc: "Most questions are graded the moment you submit — including \"explain why\". Essay always needs your teacher, and so does any question (rare) that came from material with no known answer to check against — those show as pending instead of right/wrong, so you're never marked wrong just because the system doesn't know" },
+          ],
+        },
+        {
+          icon: "📝", title: "My Assignments", desc: "Exams and practice your teacher created specifically for you",
+          items: [
+            { label: "Where it comes from", desc: "Your teacher targets you individually or through a group — it shows up here, not in the self-service Exams page" },
+            { label: "Time window", desc: "If your teacher set an \"opens at\" / \"due by\" date, you can only start it inside that window" },
+            { label: "Time limit", desc: "May be a custom duration your teacher set just for this assignment, different from that curriculum's usual exams" },
+            { label: "Attempts", desc: "One attempt unless your teacher allowed multiple" },
           ],
         },
         {
@@ -69,8 +79,18 @@ export function getStudentGuide(locale: "ar" | "en"): { title: string; subtitle:
       {
         icon: "✏️", title: "الاختبارات", desc: "امتحان درس، وحدة، أو امتحان شامل",
         items: [
-          { label: "إنشاء امتحان مخصص", desc: "اختار المنهج ونوع الامتحان — الذكاء الاصطناعي بيولّد الأسئلة من مادتك" },
+          { label: "إنشاء امتحان مخصص", desc: "اختار المنهج ونوع الامتحان — الأسئلة بتيجي من مادة معلمك وبنك الأسئلة، ولو ناقص أي عدد الذكاء الاصطناعي بيكمّله" },
           { label: "تلميحات الذكاء الاصطناعي", desc: "لو معلمك فعّل مساعد AI ليك، تقدر تاخد تلميح وانت بتحل من غير ما تشوف الإجابة مباشرة" },
+          { label: "تصحيح فوري", desc: "أغلب الأسئلة بتتصحح لحظة التسليم — حتى \"علّل\". المقالي دايمًا محتاج معلمك، وكمان أي سؤال (نادر) جه من مادة مالهاش إجابة معروفة — دول بتظهر \"قيد المراجعة\" بدل صح/خطأ، عشان منتحسبش عليك غلط لمجرد إن النظام مش عارف الإجابة" },
+        ],
+      },
+      {
+        icon: "📝", title: "تكليفاتي", desc: "امتحانات وتدريبات عملهالك معلمك بالاسم",
+        items: [
+          { label: "منين بتيجي", desc: "معلمك بيستهدفك إنت بالاسم أو عن طريق مجموعة — بتظهر هنا، مش في صفحة الاختبارات العادية" },
+          { label: "فترة الإتاحة", desc: "لو معلمك حدد ميعاد فتح/ميعاد تسليم، مش هتقدر تبدأ إلا جوه الفترة دي" },
+          { label: "مدة الاختبار", desc: "ممكن تكون مدة مخصصة حددها معلمك للتكليف ده بس، مختلفة عن امتحانات المنهج ده العادية" },
+          { label: "المحاولات", desc: "محاولة واحدة إلا لو معلمك سمح بمحاولات متعددة" },
         ],
       },
       {

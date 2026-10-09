@@ -25,7 +25,10 @@
     "manageCurricula": "Manage Curricula",
     "schedule": "My Schedule",
     "guide": "Guide",
-    "servers": "Deployment Servers"
+    "servers": "Deployment Servers",
+    "myAssignments": "My Assignments",
+    "myGroups": "My Groups",
+    "assignments": "Assignments"
   },
   "roles": {
     "teacher": "Teacher",

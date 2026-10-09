@@ -56,6 +56,18 @@ class DocumentParser:
         text, confidence = await self._ocr_image_bytes(buf.getvalue())
         return PageText(page_num=1, text=text, confidence=confidence)
 
+    def render_page_images(self, file_path: str, ext: str) -> list[bytes]:
+        """Render each page as a PNG, for QR scanning — independent of OCR."""
+        if ext == ".pdf":
+            images = []
+            doc = fitz.open(file_path)
+            mat = fitz.Matrix(1.5, 1.5)  # lower zoom than OCR's 2x, QR needs less detail
+            for page in doc:
+                images.append(page.get_pixmap(matrix=mat).tobytes("png"))
+            doc.close()
+            return images
+        return [Path(file_path).read_bytes()]
+
     async def _ocr_image_bytes(self, img_bytes: bytes) -> tuple[str, float]:
         b64 = base64.b64encode(img_bytes).decode()
         response = await client.chat.completions.create(
@@ -91,32 +103,49 @@ class CurriculumChunker:
     ]
 
     def detect_structure(self, pages: list[PageText]) -> dict:
-        """Auto-detect units and lessons from page text."""
-        full_text = "\n".join(p.text for p in pages)
+        """Auto-detect units and lessons from page text.
+
+        Splits each page's text at the exact position of every unit/lesson
+        marker found on it, so when two lesson headers land on the same
+        page, each lesson only gets the text between its own marker and the
+        next one — not the whole page dumped onto whichever lesson happened
+        to be seen last.
+        """
+        unit_re = re.compile("|".join(f"(?:{p})" for p in self.UNIT_PATTERNS), re.IGNORECASE)
+        lesson_re = re.compile("|".join(f"(?:{p})" for p in self.LESSON_PATTERNS), re.IGNORECASE)
+
         units = []
         current_unit = {"title": "الوحدة الأولى", "lessons": [], "start_page": 1}
         current_lesson = None
 
         for page in pages:
-            for pattern in self.UNIT_PATTERNS:
-                matches = re.findall(pattern, page.text, re.IGNORECASE)
-                for match in matches:
+            markers = [("unit", m.start(), m.group().strip()) for m in unit_re.finditer(page.text)]
+            markers += [("lesson", m.start(), m.group().strip()) for m in lesson_re.finditer(page.text)]
+            markers.sort(key=lambda m: m[1])
+
+            if not markers:
+                if current_lesson:
+                    current_lesson["text"] += "\n" + page.text
+                continue
+
+            # Text before the first marker still belongs to whatever lesson was open.
+            if current_lesson:
+                current_lesson["text"] += "\n" + page.text[:markers[0][1]]
+
+            for i, (kind, pos, title) in enumerate(markers):
+                end = markers[i + 1][1] if i + 1 < len(markers) else len(page.text)
+                segment = page.text[pos:end]
+                if kind == "unit":
                     if current_lesson:
                         current_unit["lessons"].append(current_lesson)
                         current_lesson = None
                     if current_unit["lessons"] or units:
                         units.append(current_unit)
-                    current_unit = {"title": match.strip(), "lessons": [], "start_page": page.page_num}
-
-            for pattern in self.LESSON_PATTERNS:
-                matches = re.findall(pattern, page.text, re.IGNORECASE)
-                for match in matches:
+                    current_unit = {"title": title, "lessons": [], "start_page": page.page_num}
+                else:
                     if current_lesson:
                         current_unit["lessons"].append(current_lesson)
-                    current_lesson = {"title": match.strip(), "start_page": page.page_num, "text": ""}
-
-            if current_lesson:
-                current_lesson["text"] += "\n" + page.text
+                    current_lesson = {"title": title, "start_page": page.page_num, "text": segment}
 
         if current_lesson:
             current_unit["lessons"].append(current_lesson)

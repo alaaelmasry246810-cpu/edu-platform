@@ -40,7 +40,7 @@ const SIZE_THRESHOLD_PX = 160;
 export default function SecurityHardening() {
   const { locale } = useI18n();
   const router = useRouter();
-  const { user, logout } = useAuthStore();
+  const { user, logout, isAdmin } = useAuthStore();
   const suspendedRef = useRef(false);
 
   useEffect(() => {
@@ -80,9 +80,21 @@ export default function SecurityHardening() {
   }, [locale]);
 
   // DevTools-open heuristic → auto-suspend (see the big caveat above).
+  //
+  // outerWidth/outerHeight vs innerWidth/innerHeight isn't a fixed 0 when
+  // DevTools is closed — browser chrome height, OS display-scaling (e.g.
+  // Windows at 125%/150%), and some browser/extension toolbars all shift it
+  // by amounts that can already exceed SIZE_THRESHOLD_PX on a perfectly
+  // normal, DevTools-closed page. Comparing against a baseline captured
+  // right after mount (instead of against 0) makes the check react to
+  // DevTools opening *during* the session rather than to whatever offset
+  // this particular browser/display already had at load time.
   useEffect(() => {
     if (!user) return; // nothing to suspend if not logged in
+    if (isAdmin()) return; // admins need DevTools for normal work — never auto-suspend them
 
+    const baselineWidthDelta = window.outerWidth - window.innerWidth;
+    const baselineHeightDelta = window.outerHeight - window.innerHeight;
     let sustainedCount = 0;
 
     const suspend = async () => {
@@ -104,8 +116,8 @@ export default function SecurityHardening() {
     };
 
     const interval = setInterval(() => {
-      const widthDelta = window.outerWidth - window.innerWidth;
-      const heightDelta = window.outerHeight - window.innerHeight;
+      const widthDelta = window.outerWidth - window.innerWidth - baselineWidthDelta;
+      const heightDelta = window.outerHeight - window.innerHeight - baselineHeightDelta;
       const likelyOpen = widthDelta > SIZE_THRESHOLD_PX || heightDelta > SIZE_THRESHOLD_PX;
 
       if (likelyOpen) {
@@ -119,7 +131,7 @@ export default function SecurityHardening() {
     }, CHECK_INTERVAL_MS);
 
     return () => clearInterval(interval);
-  }, [user, locale, logout, router]);
+  }, [user, locale, logout, router, isAdmin]);
 
   return null;
 }

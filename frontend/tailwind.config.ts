@@ -25,6 +25,15 @@ const config: Config = {
           600: "#0891B2",
         }
       },
+      keyframes: {
+        sceneIn: {
+          from: { opacity: "0", transform: "scale(1.02)" },
+          to: { opacity: "1", transform: "scale(1)" },
+        },
+      },
+      animation: {
+        "scene-in": "sceneIn .5s ease",
+      },
     },
   },
   plugins: [],

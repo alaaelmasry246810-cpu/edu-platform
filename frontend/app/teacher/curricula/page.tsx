@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { curriculumAPI } from "@/lib/api";
+import { curriculumAPI, assignmentAPI } from "@/lib/api";
 import toast from "react-hot-toast";
 import clsx from "clsx";
 import { useI18n } from "@/lib/i18n";
@@ -14,6 +14,13 @@ interface Curriculum {
   status: "pending" | "processing" | "completed" | "failed";
   total_pages: number;
   created_at: string;
+  content_type: "curriculum" | "exam";
+  group_id: string | null;
+}
+
+interface Group {
+  id: string;
+  name: string;
 }
 
 const SUBJECT_ICONS: Record<string, string> = {
@@ -25,8 +32,11 @@ const SUBJECT_ICONS: Record<string, string> = {
 export default function TeacherCurriculaPage() {
   const { t, dir } = useI18n();
   const [curricula, setCurricula] = useState<Curriculum[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState<"all" | "curriculum" | "exam">("all");
+  const [groupFilter, setGroupFilter] = useState<string>("all");
 
   const STATUS_CONFIG = {
     pending:    { label: t("dashboard.myCurricula.status.pending"),    color: "bg-slate-100 text-slate-600",  icon: "⏳" },
@@ -43,6 +53,7 @@ export default function TeacherCurriculaPage() {
         .finally(() => setLoading(false));
     };
     fetchData();
+    assignmentAPI.listGroups().then(({ data }) => setGroups(data)).catch(() => {});
     const interval = setInterval(() => {
       if (curricula.some((c) => c.status === "processing" || c.status === "pending")) {
         fetchData();
@@ -51,10 +62,36 @@ export default function TeacherCurriculaPage() {
     return () => clearInterval(interval);
   }, []);
 
+  const handleGroupChange = async (curriculumId: string, groupId: string) => {
+    const prev = curricula;
+    setCurricula((cs) => cs.map((c) => c.id === curriculumId ? { ...c, group_id: groupId || null } : c));
+    try {
+      await curriculumAPI.assignGroup(curriculumId, groupId || null);
+    } catch {
+      setCurricula(prev);
+      toast.error(t("dashboard.myCurricula.groupUpdateError"));
+    }
+  };
+
+  const handleDelete = async (curriculumId: string) => {
+    if (!confirm(t("dashboard.myCurricula.deleteConfirm"))) return;
+    const prev = curricula;
+    setCurricula((cs) => cs.filter((c) => c.id !== curriculumId));
+    try {
+      await curriculumAPI.delete(curriculumId);
+      toast.success(t("dashboard.myCurricula.deleteSuccess"));
+    } catch {
+      setCurricula(prev);
+      toast.error(t("dashboard.myCurricula.deleteError"));
+    }
+  };
+
   const filtered = curricula.filter((c) =>
-    !search ||
-    c.title.toLowerCase().includes(search.toLowerCase()) ||
-    (c.subject?.toLowerCase().includes(search.toLowerCase()))
+    (typeFilter === "all" || c.content_type === typeFilter) &&
+    (groupFilter === "all" || (groupFilter === "none" ? !c.group_id : c.group_id === groupFilter)) &&
+    (!search ||
+      c.title.toLowerCase().includes(search.toLowerCase()) ||
+      (c.subject?.toLowerCase().includes(search.toLowerCase())))
   );
 
   if (loading) return (
@@ -79,9 +116,9 @@ export default function TeacherCurriculaPage() {
         </Link>
       </div>
 
-      {/* Search */}
+      {/* Search + type filter */}
       {curricula.length > 0 && (
-        <div className="mb-6">
+        <div className="mb-6 flex flex-wrap gap-3 items-center">
           <input
             type="text"
             placeholder={t("dashboard.myCurricula.searchPlaceholder")}
@@ -89,6 +126,31 @@ export default function TeacherCurriculaPage() {
             onChange={(e) => setSearch(e.target.value)}
             className="w-full max-w-md border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
+          <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 rounded-xl p-1">
+            {(["all", "curriculum", "exam"] as const).map((f) => (
+              <button
+                key={f}
+                onClick={() => setTypeFilter(f)}
+                className={clsx(
+                  "px-3 py-1.5 rounded-lg text-xs font-medium transition-colors",
+                  typeFilter === f ? "bg-white dark:bg-slate-700 shadow text-blue-600" : "text-slate-500"
+                )}
+              >
+                {t(`dashboard.myCurricula.typeFilter.${f}`)}
+              </button>
+            ))}
+          </div>
+          {groups.length > 0 && (
+            <select
+              value={groupFilter}
+              onChange={(e) => setGroupFilter(e.target.value)}
+              className="border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-xs bg-white dark:bg-slate-800"
+            >
+              <option value="all">{t("dashboard.myCurricula.groupFilter.all")}</option>
+              <option value="none">{t("dashboard.myCurricula.groupFilter.none")}</option>
+              {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+            </select>
+          )}
         </div>
       )}
 
@@ -143,15 +205,30 @@ export default function TeacherCurriculaPage() {
                 )}
               >
                 {/* Top row */}
-                <div className="flex items-start justify-between mb-3">
-                  <div className="text-3xl">{subjectIcon}</div>
-                  <span className={clsx("text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1", status.color)}>
-                    {isProcessing && (
-                      <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
-                    )}
-                    {status.icon} {status.label}
-                  </span>
+                <div className="flex items-start justify-between mb-3 gap-2">
+                  <div className="text-3xl">{c.content_type === "exam" ? "📝" : subjectIcon}</div>
+                  <div className="flex items-center gap-2">
+                    <span className={clsx("text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1", status.color)}>
+                      {isProcessing && (
+                        <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
+                      )}
+                      {status.icon} {status.label}
+                    </span>
+                    <button
+                      onClick={() => handleDelete(c.id)}
+                      title={t("dashboard.myCurricula.delete")}
+                      className="text-slate-300 hover:text-red-600 dark:text-slate-600 dark:hover:text-red-400 transition-colors text-sm shrink-0"
+                    >
+                      🗑️
+                    </button>
+                  </div>
                 </div>
+
+                {c.content_type === "exam" && (
+                  <span className="inline-block text-xs px-2 py-0.5 rounded-full font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 mb-2">
+                    {t("dashboard.myCurricula.typeFilter.exam")}
+                  </span>
+                )}
 
                 {/* Title */}
                 <h3 className="font-bold text-slate-800 dark:text-slate-100 mb-1 line-clamp-2 text-sm leading-relaxed">
@@ -165,13 +242,27 @@ export default function TeacherCurriculaPage() {
                   <span>· {c.total_pages} {t("dashboard.myCurricula.pages")}</span>
                 </div>
 
+                {groups.length > 0 && (
+                  <select
+                    value={c.group_id ?? ""}
+                    onChange={(e) => handleGroupChange(c.id, e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-full mb-3 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-300"
+                  >
+                    <option value="">{t("dashboard.myCurricula.groupFilter.none")}</option>
+                    {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+                  </select>
+                )}
+
                 {/* Action */}
                 {c.status === "completed" ? (
                   <Link
                     href={`/dashboard/lessons/${c.id}`}
                     className="block text-center bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors"
                   >
-                    {t("dashboard.myCurricula.startStudying")}
+                    {c.content_type === "exam"
+                      ? t("dashboard.myCurricula.viewExtractedQuestions")
+                      : t("dashboard.myCurricula.startStudying")}
                   </Link>
                 ) : isProcessing ? (
                   <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-900/20 rounded-xl px-4 py-2.5">

@@ -76,6 +76,9 @@ class QuizAttempt(Base):
     student_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
     curriculum_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("curricula.id"), nullable=False)
     teacher_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
+    # Set when this attempt was started from a teacher-created Assignment
+    # (as opposed to the student self-service /exam/create flow).
+    assignment_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("assignments.id"), nullable=True, index=True)
 
     # Scope
     exam_type: Mapped[ExamType] = mapped_column(Enum(ExamType), default=ExamType.COMPREHENSIVE)
@@ -92,7 +95,9 @@ class QuizAttempt(Base):
     answers: Mapped[dict | None] = mapped_column(JSON, nullable=True)
 
     # Per-question grading results
-    # [{q_index, student_answer, correct_answer, is_correct, points_earned, max_points, type, needs_manual}]
+    # [{q_index, student_answer, correct_answer, is_correct, points_earned, max_points, type, needs_manual, why_wrong, options}]
+    # needs_manual is true for essay always, and for any other type whose
+    # source had no known correct_answer — never auto-graded or guessed.
     question_results: Mapped[list | None] = mapped_column(JSON, nullable=True)
 
     # Scores

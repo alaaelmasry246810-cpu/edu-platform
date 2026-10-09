@@ -1,4 +1,15 @@
 {
+  "assignments": {
+    "title": "My Assignments",
+    "subtitle": "Exams and practice your teacher assigned to you",
+    "empty": "No assignments yet",
+    "loadError": "Couldn't load your assignments",
+    "status": { "open": "Open now", "notOpen": "Not open yet", "closed": "Deadline passed", "done": "Completed" },
+    "lastScore": "Last score: {pct}%",
+    "startError": "Couldn't start this assignment",
+    "backToList": "← Back to My Assignments",
+    "submitted": "Submitted ✅"
+  },
   "schedule": {
     "title": "📅 My Schedule",
     "subtitle": "Your school class timetable and your personal study plan",
@@ -42,19 +53,47 @@
     "status": { "pending": "Pending", "processing": "Processing...", "completed": "Ready to Study", "failed": "Analysis Failed" },
     "pages": "pages",
     "startStudying": "Start Studying →",
+    "viewExtractedQuestions": "View Extracted Questions →",
     "aiAnalyzing": "AI is analyzing...",
     "analysisError": "There was a problem with analysis",
-    "loadError": "There was a problem loading"
+    "loadError": "There was a problem loading",
+    "typeFilter": { "all": "All", "curriculum": "Curricula", "exam": "Exams" },
+    "groupFilter": { "all": "All groups", "none": "No group" },
+    "groupUpdateError": "Couldn't update the group",
+    "delete": "Delete curriculum",
+    "deleteConfirm": "Are you sure you want to delete this curriculum? All its units, lessons and questions will be deleted too, and this can't be undone.",
+    "deleteSuccess": "Curriculum deleted",
+    "deleteError": "Failed to delete the curriculum"
   },
   "upload": {
     "title": "Upload New Curriculum",
-    "subtitle": "Supports PDF, images, or QR scan — AI will analyze it and build a question bank automatically",
+    "subtitle": "Supports PDF, images (including a page with a QR code linking to more content), or a photo taken with your phone — AI will analyze it and build a question bank automatically",
     "dropzone": { "hint": "Drag a file here or click to choose", "formats": "PDF, PNG, JPG, WEBP — up to 50MB" },
-    "fields": { "title": "Curriculum Title *", "titlePlaceholder": "e.g. Chemistry Curriculum for Grade 12", "subject": "Subject", "subjectPlaceholder": "Chemistry", "grade": "Grade Level", "gradePlaceholder": "Grade 12" },
+    "contentType": { "curriculum": "📚 Study Material", "exam": "📝 Exam Paper" },
+    "fields": { "title": "Curriculum Title *", "titlePlaceholder": "e.g. Chemistry Curriculum for Grade 12", "subject": "Subject", "subjectPlaceholder": "Chemistry", "grade": "Grade Level", "gradePlaceholder": "Grade 12", "group": "Group (optional)", "groupPlaceholder": "All groups" },
     "submit": "Upload & Analyze with AI 🤖",
     "submitting": "Uploading and processing...",
     "errors": { "noFile": "Please choose a file", "noTitle": "Please enter a curriculum title", "uploadFailed": "Error uploading the file" },
-    "success": "Curriculum uploaded! AI analysis in progress..."
+    "success": "Curriculum uploaded! AI analysis in progress...",
+    "phoneUpload": {
+      "button": "📱 Scan to upload from your phone",
+      "startError": "Couldn't start a phone upload session",
+      "title": "Scan with your phone",
+      "hint": "Open your phone's camera and scan this code to upload a photo directly — no login needed on your phone",
+      "expiresIn": "Expires in {minutes}",
+      "waiting": "Waiting for upload from your phone...",
+      "received": "Received from your phone ✅"
+    }
+  },
+  "mobileUpload": {
+    "title": "Upload from your phone",
+    "subtitle": "Take a photo or choose one from your gallery",
+    "submit": "Upload",
+    "submitting": "Uploading...",
+    "success": "Uploaded! You can go back to your computer now.",
+    "successHint": "The curriculum will finish processing automatically.",
+    "expiredToken": "This QR code has expired. Please generate a new one on your computer.",
+    "missingToken": "Invalid link. Please scan the QR code again from your computer."
   },
   "exam": {
     "setup": {
@@ -69,7 +108,24 @@
       "difficulty": { "easy": "Easy", "medium": "Medium", "hard": "Hard" },
       "selectCurriculumFirst": "Choose a curriculum first",
       "preparing": "Preparing the exam...",
-      "start": "Start Exam ✏️"
+      "start": "Start Exam ✏️",
+      "lessonLabel": "Lesson",
+      "lessonPlaceholder": "Choose a lesson...",
+      "unitLabel": "Unit",
+      "unitPlaceholder": "Choose a unit...",
+      "selectLessonFirst": "Choose a lesson",
+      "selectUnitFirst": "Choose a unit",
+      "customTemplateToggle": "Customize question types & counts",
+      "customTemplateHint": "Pick which question types and how many of each, instead of the default setup",
+      "questionTypes": {
+        "mcq": "Multiple choice",
+        "true_false": "True / False",
+        "fill_blank": "Fill in the blank",
+        "why": "Explain why",
+        "essay": "Essay"
+      },
+      "countLabel": "Count",
+      "customTotalError": "Choose at least one question type"
     },
     "active": {
       "questionCounter": "Question {current} / {total}",
@@ -88,16 +144,26 @@
       "next": "Next →",
       "submitting": "Submitting...",
       "submit": "Submit Exam ✓",
-      "submitError": "An error occurred while submitting"
+      "submitError": "An error occurred while submitting",
+      "checkButton": "Check Answer",
+      "checking": "Checking...",
+      "checkError": "Couldn't check the answer",
+      "correctFeedback": "Correct! ✅",
+      "wrongFeedback": "Incorrect ❌",
+      "pendingReviewFeedback": "📋 Needs teacher review — no known answer for this one in the source",
+      "whyWrongLabel": "Why it's wrong:",
+      "whyCorrectLabel": "Why this is correct:"
     },
     "results": {
       "passed": "Well done! You passed the exam",
       "failed": "You didn't pass this time",
-      "pendingManual": "⚠️ Some open questions are still waiting for teacher review",
+      "pendingManual": "⚠️ Some questions are still waiting for teacher review",
       "breakdownTitle": "Answer Breakdown",
       "questionFallback": "Question {number}",
       "yourAnswer": "Your answer:",
       "correctAnswer": "Correct answer:",
+      "whyWrongLabel": "Why it's wrong:",
+      "whyCorrectLabel": "Why this is correct:",
       "newExam": "New Exam 🔄"
     },
     "createError": "Couldn't create the exam",
@@ -203,11 +269,20 @@
     "generatingFlashcards": "🃏 AI is creating flashcards...",
     "aiWorking": "🤖 AI is working...",
     "noFlashcards": "No flashcards — click the tab again to generate them",
+    "noExtractedQuestions": "No questions were found in this scanned exam page",
     "clickTabPrompt": "Click any tab to load content",
     "selectLessonPrompt": "Select a lesson from the list",
     "flashcardsRegenerated": "New flashcards created! 🃏",
     "genericError": "Something went wrong",
-    "question": { "hideAnswer": "Hide Answer ▲", "showAnswer": "Show Answer ▼", "answerLabel": "✅ Answer:" }
+    "question": {
+      "hideAnswer": "Hide Answer ▲",
+      "showAnswer": "Show Answer ▼",
+      "answerLabel": "✅ Answer:",
+      "delete": "Delete question",
+      "deleteConfirm": "Are you sure you want to delete this question?",
+      "deleteSuccess": "Question deleted",
+      "deleteError": "Failed to delete the question"
+    }
   },
   "flashcards": {
     "empty": "No flashcards",

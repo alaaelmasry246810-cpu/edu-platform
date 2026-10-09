@@ -28,9 +28,17 @@ class Curriculum(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     owner_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    # Optional: scope this curriculum to one of the teacher's student groups
+    # (e.g. "Grade 3A"). Null means it isn't tied to a particular group and
+    # shows up regardless of the group filter.
+    group_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("student_groups.id"), nullable=True, index=True)
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     subject: Mapped[str | None] = mapped_column(String(255), nullable=True)
     grade_level: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    # "curriculum" (default — teaching material, chunked/embedded for RAG) or
+    # "exam" (an already-written exam paper — real questions/answers are
+    # extracted verbatim instead of AI-generated; see exam_extraction_service).
+    content_type: Mapped[str] = mapped_column(String(20), default="curriculum", nullable=False)
 
     # File info
     file_path: Mapped[str | None] = mapped_column(String(1000), nullable=True)
@@ -70,6 +78,10 @@ class Lesson(Base):
     curriculum_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("curricula.id"), nullable=False)
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     order: Mapped[int] = mapped_column(Integer, default=0)
+
+    # Raw lesson text as extracted from the uploaded file (source for
+    # interactive-video scripts; null for curricula processed before it existed)
+    content_text: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # AI-generated content (cached)
     explanation: Mapped[str | None] = mapped_column(Text, nullable=True)

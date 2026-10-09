@@ -88,13 +88,13 @@ export default function AISettingsPage() {
           <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1.5 text-slate-600">
-                {t("admin.aiSettings.ragTopK")}
-                <span className="text-slate-400 font-normal">{t("admin.aiSettings.ragTopKHint")}</span>
+                {t("admin.aiSettings.ragMaxChunks")}
+                <span className="text-slate-400 font-normal">{t("admin.aiSettings.ragMaxChunksHint")}</span>
               </label>
               <input
-                type="number" min={1} max={20}
-                value={settings.rag_top_k ?? 8}
-                onChange={(e) => set("rag_top_k", +e.target.value)}
+                type="number" min={1} max={100}
+                value={settings.rag_max_generation_chunks ?? 40}
+                onChange={(e) => set("rag_max_generation_chunks", +e.target.value)}
                 className="w-full border border-slate-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>

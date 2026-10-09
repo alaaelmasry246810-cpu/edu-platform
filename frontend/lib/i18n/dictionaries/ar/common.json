@@ -25,7 +25,10 @@
     "manageCurricula": "إدارة المناهج",
     "schedule": "جدولي",
     "guide": "الدليل",
-    "servers": "سيرفرات النشر"
+    "servers": "سيرفرات النشر",
+    "myAssignments": "مهامي",
+    "myGroups": "مجموعاتي",
+    "assignments": "التكليفات"
   },
   "roles": {
     "teacher": "معلم",

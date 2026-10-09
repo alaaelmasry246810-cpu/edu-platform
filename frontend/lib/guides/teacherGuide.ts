@@ -21,29 +21,57 @@ export function getTeacherGuide(locale: "ar" | "en"): { title: string; subtitle:
           ],
         },
         {
+          icon: "🧑‍🤝‍🧑", title: "My Groups", desc: "Reusable named groups of your students (e.g. a class)",
+          items: [
+            { label: "Create a group", desc: "Pick any of your students once and reuse the group whenever you target an assignment — editing a group later never changes who was already assigned past exams" },
+          ],
+        },
+        {
+          icon: "📝", title: "Assignments", desc: "Create a timed exam or practice for specific students, on your schedule",
+          items: [
+            { label: "Who gets it", desc: "Pick individual students and/or a saved group — each targeted student gets their own attempt" },
+            { label: "What it covers", desc: "Choose the curriculum, exam type (lesson/unit/comprehensive), and optionally a specific unit/lesson — questions come first from anything already extracted or published for that scope, then AI fills in the rest" },
+            { label: "Time limit", desc: "Leave it blank to use the curriculum's configured duration, or set a custom number of minutes just for this one assignment" },
+            { label: "Scheduling", desc: "Optional \"opens at\" and \"due by\" dates — the student can't start it outside that window" },
+            { label: "Allow multiple attempts", desc: "Off by default for \"exam\", on by default for \"practice\" — toggle either way" },
+            { label: "Auto-reveal score", desc: "If off, essay questions wait in your Needs Review queue; if on, essay is graded by AI immediately and the student sees their full result right away" },
+            { label: "Roster view", desc: "Open the assignment to see every targeted student and their attempt status" },
+          ],
+        },
+        {
           icon: "📋", title: "Needs Review", desc: "Grade the exams your students submitted",
           items: [
-            { label: "Manual grading", desc: "Open (\"why\"/essay) questions need your judgment — MCQ/true-false/fill-blank are graded automatically" },
-            { label: "🤖 AI Suggestion", desc: "Get a suggested score and reasoning for an open answer before you decide" },
+            { label: "Manual grading", desc: "Essay always lands here, plus any question (of any type) whose source had no known correct answer — those are never auto-graded or guessed, even if a student's answer looks right" },
+            { label: "🤖 AI Suggestion", desc: "Get a suggested score and reasoning before you decide — for MCQ/true-false/fill-blank it also shows the options the student was choosing from" },
             { label: "Decision", desc: "Approve, reject, or request revision — the student is notified either way" },
           ],
         },
         {
           icon: "📚", title: "Manage My Curricula", desc: "Your own curricula, separate from your students'",
           items: [
-            { label: "Upload", desc: "Same as a student upload — PDF/image, auto-processed into lessons" },
+            { label: "Upload", desc: "PDF/image, auto-processed into units and lessons" },
+            { label: "Content type: Curriculum vs Exam", desc: "\"Curriculum\" is teaching material (chunked for AI explanations/questions). \"Exam\" is an already-written exam paper — its real questions and answers are extracted verbatim instead of AI-generated, and shown as reviewable question cards, not a raw scanned page" },
+            { label: "Delete", desc: "🗑️ on any curriculum card — removes it and everything under it (units, lessons, extracted questions, indexed content); can't be undone" },
+            { label: "Delete one extracted question", desc: "On an exam paper's question list, 🗑️ removes just that one bad extraction" },
           ],
         },
         {
-          icon: "🗂️", title: "Question Bank", desc: "Share questions with other teachers, or use theirs",
+          icon: "🗂️", title: "Question Bank", desc: "Build a reusable pool of questions that automatically feeds your students' practices and exams",
           items: [
-            { label: "Publish a question", desc: "Make one of your questions available to the community" },
-            { label: "Import", desc: "Mark a question as imported, then add it to your own curriculum manually" },
+            { label: "Generate from Curriculum", desc: "Pick a curriculum (and optionally a unit/lesson) as the source — for an \"exam\"-type curriculum this pulls the verbatim-extracted questions, otherwise the AI generates new ones from the content" },
+            { label: "Review, then pick a destination", desc: "Select which of the generated/extracted questions to keep, then choose the curriculum/unit/lesson to attach them to — this can be a different curriculum than the source, e.g. extracting an exam paper's questions and pooling them under your real teaching curriculum" },
+            { label: "Why this matters", desc: "Once published, these questions are pulled automatically whenever a student (or an assignment) generates a practice/exam matching that curriculum/unit/lesson — before any new AI generation happens" },
+            { label: "📋 No answer", desc: "If an exam paper never printed an answer for a question, extraction leaves it blank rather than guessing — the system never auto-grades that question for any student, no matter its type; it's flagged here and always routed to your Needs Review queue instead, exactly like essay" },
+            { label: "Publish a question manually", desc: "Type one in yourself and make it available to the community" },
+            { label: "Browse & filter", desc: "Search the shared bank by type, difficulty, curriculum, unit, and lesson" },
+            { label: "Delete", desc: "🗑️ on any question you published, with a confirmation" },
           ],
         },
         {
-          icon: "⚙️", title: "Exam Settings", desc: "View how each exam type is configured (question counts, time, points) — editable by the admin only",
-          items: [],
+          icon: "⚙️", title: "Exam Settings", desc: "The default question counts, time limit, and points per exam type/curriculum — editable by the admin only",
+          items: [
+            { label: "Per-assignment override", desc: "When creating an assignment you can still set a custom time limit just for that one exam, without changing these defaults" },
+          ],
         },
         {
           icon: "📅", title: "A Student's Schedule", desc: "Open it from that student's results page",
@@ -80,29 +108,57 @@ export function getTeacherGuide(locale: "ar" | "en"): { title: string; subtitle:
         ],
       },
       {
+        icon: "🧑‍🤝‍🧑", title: "مجموعاتي", desc: "مجموعات محفوظة وقابلة لإعادة الاستخدام من طلابك (زي فصل دراسي)",
+        items: [
+          { label: "عمل مجموعة", desc: "اختار طلابك مرة واحدة واستخدم المجموعة كل ما احتجت تستهدفها بتكليف — تعديل المجموعة بعد كده مبيأثرش على مين كان مستهدف في امتحانات سابقة" },
+        ],
+      },
+      {
+        icon: "📝", title: "التكليفات", desc: "اعمل امتحان أو تدريب محدد المدة لطلاب معيّنين، في الميعاد اللي تحدده",
+        items: [
+          { label: "لمين", desc: "اختار طلاب بالاسم و/أو مجموعة محفوظة — كل طالب مستهدف ياخد محاولته الخاصة" },
+          { label: "بيغطي إيه", desc: "اختار المنهج، نوع الامتحان (درس/وحدة/شامل)، واختياريًا وحدة/درس معيّن — الأسئلة بتيجي الأول من أي حاجة مستخلصة أو منشورة لنفس النطاق، وبعدين الذكاء الاصطناعي يكمّل الباقي" },
+          { label: "مدة الاختبار", desc: "سيبها فاضية عشان تاخد المدة المضبوطة على المنهج، أو حدد عدد دقائق مخصص للتكليف ده بس" },
+          { label: "الجدولة", desc: "ميعاد فتح وميعاد تسليم اختياريين — الطالب مش هيقدر يبدأ برّه الفترة دي" },
+          { label: "السماح بمحاولات متعددة", desc: "مقفول افتراضيًا لو النوع \"امتحان\"، ومفتوح افتراضيًا لو \"تدريب\" — تقدر تغيّرها" },
+          { label: "كشف الدرجة تلقائيًا", desc: "لو مقفول، الأسئلة المقالية بتستنى في قائمة \"تحتاج مراجعة\" عندك؛ لو مفتوح، بتتصحح فورًا بالذكاء الاصطناعي والطالب بيشوف نتيجته كاملة على طول" },
+          { label: "عرض القائمة", desc: "افتح التكليف عشان تشوف كل طالب مستهدف وحالة محاولته" },
+        ],
+      },
+      {
         icon: "📋", title: "تحتاج مراجعة", desc: "صحّح امتحانات طلابك",
         items: [
-          { label: "التصحيح اليدوي", desc: "الأسئلة المفتوحة (علّل/مقالي) محتاجة تقييمك — الاختيار من متعدد وصح/خطأ والفراغات بتتصحح تلقائيًا" },
-          { label: "🤖 اقتراح ذكاء اصطناعي", desc: "خد درجة مقترحة وسبب لإجابة مفتوحة قبل ما تقرر" },
+          { label: "التصحيح اليدوي", desc: "المقالي بيوصل هنا دايمًا، وكمان أي سؤال (أي نوع) مالوش إجابة معروفة في مصدره — دول مش بيتصححوا تلقائي أو يتخمّن عليهم أبدًا، حتى لو إجابة الطالب شكلها صح" },
+          { label: "🤖 اقتراح ذكاء اصطناعي", desc: "خد درجة مقترحة وسبب قبل ما تقرر — لو السؤال اختيار من متعدد/صح وخطأ/فراغ بيوريك الخيارات اللي الطالب كان بيختار منها كمان" },
           { label: "القرار", desc: "موافقة، رفض، أو طلب مراجعة — الطالب بيتبلّغ في الحالتين" },
         ],
       },
       {
         icon: "📚", title: "إدارة مناهجي", desc: "مناهجك الخاصة، منفصلة عن مناهج طلابك",
         items: [
-          { label: "رفع منهج", desc: "زي رفع الطالب بالظبط — PDF/صورة، بيتحلل تلقائيًا لدروس" },
+          { label: "رفع منهج", desc: "PDF أو صورة، بيتحلل تلقائيًا لوحدات ودروس" },
+          { label: "نوع المحتوى: منهج ولا امتحان", desc: "\"منهج\" ده مادة تعليمية (بتتقسم للذكاء الاصطناعي يشرحها ويولّد منها أسئلة). \"امتحان\" ده ورقة امتحان مكتوبة بالفعل — أسئلتها وإجاباتها الحقيقية بتتستخلص حرفيًا بدل ما تتولّد، وبتتعرض كـكروت أسئلة قابلة للمراجعة مش كصفحة ممسوحة ضوئيًا" },
+          { label: "حذف منهج", desc: "🗑️ على أي كارت منهج — بيمسحه وكل اللي تحته (وحدات، دروس، أسئلة مستخلصة، محتوى مفهرس)؛ الإجراء ده نهائي" },
+          { label: "حذف سؤال مستخلص لوحده", desc: "في قائمة أسئلة ورقة الامتحان، 🗑️ بيمسح الاستخلاص الغلط ده بس" },
         ],
       },
       {
-        icon: "🗂️", title: "بنك الأسئلة", desc: "شارك أسئلتك مع معلمين تانيين، أو استخدم أسئلتهم",
+        icon: "🗂️", title: "بنك الأسئلة", desc: "ابني مخزون أسئلة قابل لإعادة الاستخدام يغذّي تدريبات وامتحانات طلابك أوتوماتيك",
         items: [
-          { label: "نشر سؤال", desc: "اجعل واحد من أسئلتك متاح للمجتمع" },
-          { label: "استيراد", desc: "علّم السؤال كمستورد، وبعدين ضيفه لمنهجك يدويًا" },
+          { label: "توليد من المنهج", desc: "اختار منهج (واختياريًا وحدة/درس) كمصدر — لو المنهج نوعه \"امتحان\" بيسحب الأسئلة المستخلصة حرفيًا، لو منهج عادي الذكاء الاصطناعي بيولّد أسئلة جديدة من محتواه" },
+          { label: "راجع، وبعدين اختار الوجهة", desc: "حدد أي الأسئلة المولّدة/المستخلصة عايز تحتفظ بيها، وبعدين اختار المنهج/الوحدة/الدرس اللي عايز تربطها بيه — ممكن يكون منهج مختلف عن المصدر، زي استخلاص أسئلة ورقة امتحان وربطها بمنهجك الحقيقي" },
+          { label: "ليه ده مهم", desc: "بمجرد النشر، الأسئلة دي بتتسحب أوتوماتيك أول ما طالب (أو تكليف) يعمل تدريب/امتحان على نفس المنهج/الوحدة/الدرس — قبل أي توليد جديد بالذكاء الاصطناعي" },
+          { label: "📋 من غير إجابة", desc: "لو ورقة الامتحان ملقتش فيها إجابة مكتوبة لسؤال معيّن، الاستخلاص بيسيبها فاضية بدل ما يخمّن — والنظام مش هيصحح السؤال ده تلقائي لأي طالب مهما كان نوعه، بيتعلّم عليه هنا وبيتحول لقائمة \"تحتاج مراجعة\" عندك زي المقالي بالظبط" },
+          { label: "نشر سؤال يدويًا", desc: "اكتب سؤال بنفسك واجعله متاح للمجتمع" },
+          { label: "تصفّح وفلترة", desc: "دوّر في المكتبة المشتركة حسب النوع، الصعوبة، المنهج، الوحدة، والدرس" },
+          { label: "حذف", desc: "🗑️ على أي سؤال نشرته، مع تأكيد قبل الحذف" },
         ],
       },
       {
-        icon: "⚙️", title: "إعدادات الامتحانات", desc: "شوف إزاي كل نوع امتحان مضبوط (عدد الأسئلة، الوقت، الدرجات) — التعديل للآدمن بس",
-        items: [],
+        icon: "⚙️", title: "إعدادات الامتحانات", desc: "عدد الأسئلة الافتراضي، مدة الاختبار، والدرجات لكل نوع امتحان/منهج — التعديل للآدمن بس",
+        items: [
+          { label: "استثناء لكل تكليف", desc: "لما تعمل تكليف، لسه تقدر تحدد مدة مخصصة للامتحان ده بس، من غير ما تغيّر الإعدادات العامة دي" },
+        ],
       },
       {
         icon: "📅", title: "جدول طالب معيّن", desc: "افتحه من صفحة نتائج الطالب",

@@ -66,7 +66,7 @@ class AdminSettings(BaseModel):
     free_questions_per_day: int | None = None
     free_summaries_per_month: int | None = None
     ai_model: str | None = None
-    rag_top_k: int | None = None
+    rag_max_generation_chunks: int | None = None
     monthly_price_usd: float | None = None
     yearly_price_usd: float | None = None
 

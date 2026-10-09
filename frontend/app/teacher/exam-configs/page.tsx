@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { teacherAPI } from "@/lib/api";
+import { teacherAPI, curriculumAPI } from "@/lib/api";
 import { useAuthStore } from "@/lib/store";
 import toast from "react-hot-toast";
 import clsx from "clsx";
@@ -8,8 +8,9 @@ import { useI18n } from "@/lib/i18n";
 
 type ExamType = "lesson_practice" | "unit_practice" | "comprehensive";
 
-const DEFAULT_CONFIG = (type: ExamType) => ({
+const DEFAULT_CONFIG = (type: ExamType, curriculumId: string | null) => ({
   exam_type: type,
+  curriculum_id: curriculumId,
   time_limit_minutes: 30,
   mcq_count: 10, true_false_count: 5, fill_blank_count: 3, why_count: 2, essay_count: 0,
   mcq_points: 2.0, true_false_points: 1.0, fill_blank_points: 2.0, why_points: 5.0, essay_points: 10.0,
@@ -21,9 +22,15 @@ export default function ExamConfigsPage() {
   const { t, dir } = useI18n();
   const isAdmin = user?.role === "admin";
   const [configs, setConfigs] = useState<any[]>([]);
+  const [curricula, setCurricula] = useState<any[]>([]);
+  const [scopeCurriculumId, setScopeCurriculumId] = useState<string>("");
   const [editing, setEditing] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  // A teacher can edit an override scoped to one of their own curricula;
+  // only an admin can edit the global default (scopeCurriculumId === "").
+  const canEditScope = isAdmin || scopeCurriculumId !== "";
 
   const EXAM_LABELS: Record<ExamType, string> = {
     lesson_practice: t("teacher.examConfigs.labels.lesson_practice"),
@@ -31,16 +38,19 @@ export default function ExamConfigsPage() {
     comprehensive:   t("teacher.examConfigs.labels.comprehensive"),
   };
 
-  useEffect(() => {
+  const loadConfigs = () =>
     teacherAPI.examConfigs()
       .then(({ data }) => setConfigs(data))
-      .catch(() => toast.error(t("teacher.examConfigs.loadError")))
+      .catch(() => toast.error(t("teacher.examConfigs.loadError")));
+
+  useEffect(() => {
+    Promise.all([loadConfigs(), curriculumAPI.list().then(({ data }) => setCurricula(data))])
       .finally(() => setLoading(false));
   }, []);
 
   const handleEdit = (type: ExamType) => {
-    const existing = configs.find(c => c.exam_type === type && !c.curriculum_id);
-    setEditing(existing ? { ...existing } : DEFAULT_CONFIG(type));
+    const existing = configs.find(c => c.exam_type === type && (c.curriculum_id || "") === scopeCurriculumId);
+    setEditing(existing ? { ...existing } : DEFAULT_CONFIG(type, scopeCurriculumId || null));
   };
 
   const handleSave = async () => {
@@ -49,8 +59,7 @@ export default function ExamConfigsPage() {
     try {
       await teacherAPI.upsertExamConfig(editing);
       toast.success(t("teacher.examConfigs.save"));
-      const { data } = await teacherAPI.examConfigs();
-      setConfigs(data);
+      await loadConfigs();
       setEditing(null);
     } catch (err: any) {
       toast.error(err.response?.data?.detail || t("teacher.examConfigs.loadError"));
@@ -68,7 +77,7 @@ export default function ExamConfigsPage() {
         value={editing?.[key] ?? ""}
         onChange={e => setEditing((prev: any) => ({ ...prev, [key]: type === "number" ? parseFloat(e.target.value) || 0 : e.target.value }))}
         className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700"
-        disabled={!isAdmin}
+        disabled={!canEditScope}
       />
     </div>
   );
@@ -80,14 +89,30 @@ export default function ExamConfigsPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{t("teacher.examConfigs.title")}</h1>
         <p className="text-slate-500 text-sm mt-1">
-          {isAdmin ? t("teacher.examConfigs.subtitleAdmin") : t("teacher.examConfigs.subtitleReadOnly")}
+          {isAdmin ? t("teacher.examConfigs.subtitleAdmin") : t("teacher.examConfigs.subtitleTeacher")}
         </p>
+      </div>
+
+      {/* Scope: global default vs. an override on one of this teacher's curricula */}
+      <div className="mb-6 max-w-sm">
+        <label className="block text-xs font-semibold text-slate-500 mb-1.5">{t("teacher.examConfigs.scopeLabel")}</label>
+        <select
+          value={scopeCurriculumId}
+          onChange={(e) => { setScopeCurriculumId(e.target.value); setEditing(null); }}
+          className="w-full border border-slate-300 dark:border-slate-600 rounded-xl px-3 py-2.5 text-sm bg-white dark:bg-slate-700"
+        >
+          <option value="">{t("teacher.examConfigs.scopeGlobal")}</option>
+          {curricula.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+        </select>
+        {!isAdmin && scopeCurriculumId === "" && (
+          <p className="text-xs text-slate-400 mt-1.5">{t("teacher.examConfigs.subtitleReadOnly")}</p>
+        )}
       </div>
 
       {/* Config cards per type */}
       <div className="grid gap-4 sm:grid-cols-3 mb-6">
         {(["lesson_practice", "unit_practice", "comprehensive"] as ExamType[]).map(type => {
-          const cfg = configs.find(c => c.exam_type === type && !c.curriculum_id);
+          const cfg = configs.find(c => c.exam_type === type && (c.curriculum_id || "") === scopeCurriculumId);
           return (
             <div key={type} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
               <h2 className="font-bold text-slate-800 dark:text-slate-100 mb-3">{EXAM_LABELS[type]}</h2>
@@ -104,7 +129,7 @@ export default function ExamConfigsPage() {
               ) : (
                 <p className="text-xs text-slate-400 mb-3">{t("teacher.examConfigs.defaultNote")}</p>
               )}
-              {isAdmin && (
+              {canEditScope && (
                 <button
                   onClick={() => handleEdit(type)}
                   className="mt-3 w-full text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 py-2 rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors font-medium"
@@ -118,7 +143,7 @@ export default function ExamConfigsPage() {
       </div>
 
       {/* Edit form */}
-      {editing && isAdmin && (
+      {editing && canEditScope && (
         <div className="bg-white dark:bg-slate-800 border border-blue-200 dark:border-blue-700 rounded-2xl p-6">
           <h2 className="font-bold text-slate-800 dark:text-slate-100 mb-5">
             {t("teacher.examConfigs.editingTitle", { type: EXAM_LABELS[editing.exam_type as ExamType] })}

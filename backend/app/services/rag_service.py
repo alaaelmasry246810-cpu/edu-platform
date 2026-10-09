@@ -5,7 +5,7 @@ from openai import AsyncOpenAI
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import (
     Distance, VectorParams, PointStruct,
-    Filter, FieldCondition, MatchValue, SearchRequest
+    Filter, FieldCondition, MatchValue, SearchRequest, PayloadSchemaType
 )
 from app.config import settings
 
@@ -29,6 +29,14 @@ async def ensure_collection(collection_name: str) -> None:
                 distance=Distance.COSINE
             )
         )
+        # retrieve_full_scope() filters/scrolls on these metadata fields —
+        # Qdrant requires an explicit payload index to filter on a field at all.
+        for field in ("curriculum_id", "unit_id", "lesson_id"):
+            await qdrant.create_payload_index(
+                collection_name=collection_name,
+                field_name=field,
+                field_schema=PayloadSchemaType.KEYWORD,
+            )
 
 
 async def embed_text(text: str) -> list[float]:
@@ -60,33 +68,47 @@ async def index_chunks(collection_name: str, chunks: list[dict]) -> int:
     return len(points)
 
 
-async def retrieve_context(
+async def retrieve_full_scope(
     collection_name: str,
-    query: str,
     filter_metadata: dict | None = None,
-    top_k: int | None = None
+    max_chunks: int | None = None,
 ) -> list[str]:
-    """Retrieve the most relevant chunks for a query — restricted to this curriculum."""
-    k = top_k or settings.RAG_TOP_K
-    query_vector = await embed_text(query)
+    """Fetch every chunk in the given curriculum/unit/lesson scope, in
+    reading order — no similarity search involved.
 
-    # Build filter to stay within the curriculum/lesson scope
+    Every caller here already scopes the request by curriculum_id/unit_id/
+    lesson_id via `filter_metadata`, and what's needed inside that scope is
+    full coverage, not whichever chunks happen to rank highest against a
+    generic instruction like "create 10 questions..." (which never scores
+    meaningfully against real content no matter how relevant it is — the old
+    similarity-search approach silently capped every generation at ~8 chunks
+    regardless of how big the actual scope was, which is why unit/curriculum
+    -wide questions and summaries came out unrepresentative of the material).
+
+    Bounded by max_chunks so a whole-curriculum scope doesn't blow up token
+    cost/latency on a huge document.
+    """
+    limit = max_chunks or settings.RAG_MAX_GENERATION_CHUNKS
+
     must_conditions = []
     if filter_metadata:
         for key, value in filter_metadata.items():
             must_conditions.append(FieldCondition(key=key, match=MatchValue(value=value)))
+    scroll_filter = Filter(must=must_conditions) if must_conditions else None
 
-    search_filter = Filter(must=must_conditions) if must_conditions else None
+    try:
+        points, _ = await qdrant.scroll(
+            collection_name=collection_name,
+            scroll_filter=scroll_filter,
+            limit=limit,
+            with_payload=True,
+            with_vectors=False,
+        )
+    except Exception:
+        return []
 
-    results = await qdrant.search(
-        collection_name=collection_name,
-        query_vector=query_vector,
-        query_filter=search_filter,
-        limit=k,
-        with_payload=True,
-    )
-
-    return [r.payload["text"] for r in results if r.score > 0.4]
+    points.sort(key=lambda p: (p.payload.get("lesson_id") or "", p.payload.get("chunk_index", 0)))
+    return [p.payload["text"] for p in points]
 
 
 async def generate_with_rag(
@@ -94,10 +116,11 @@ async def generate_with_rag(
     task: str,
     filter_metadata: dict | None = None,
     system_extra: str = "",
-    model: str | None = None
+    model: str | None = None,
+    max_chunks: int | None = None,
 ) -> str:
-    """Core RAG generation — always grounded in the retrieved curriculum context."""
-    context_chunks = await retrieve_context(collection_name, task, filter_metadata)
+    """Core RAG generation — always grounded in the full scoped curriculum content."""
+    context_chunks = await retrieve_full_scope(collection_name, filter_metadata, max_chunks=max_chunks)
 
     if not context_chunks:
         return "لم يتم العثور على محتوى كافٍ في المنهج لهذا الطلب."

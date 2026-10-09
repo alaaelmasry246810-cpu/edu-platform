@@ -56,7 +56,7 @@ async def dashboard_stats(
         },
         "curricula": {"total": total_curricula},
         "ai_model": _dynamic_settings.get("ai_model", settings.AI_MODEL),
-        "rag_top_k": _dynamic_settings.get("rag_top_k", settings.RAG_TOP_K),
+        "rag_max_generation_chunks": _dynamic_settings.get("rag_max_generation_chunks", settings.RAG_MAX_GENERATION_CHUNKS),
     }
 
 
@@ -157,7 +157,7 @@ async def cancel_subscription(
 async def get_settings(_: User = Depends(get_admin_user)):
     return {
         "ai_model": _dynamic_settings.get("ai_model", settings.AI_MODEL),
-        "rag_top_k": _dynamic_settings.get("rag_top_k", settings.RAG_TOP_K),
+        "rag_max_generation_chunks": _dynamic_settings.get("rag_max_generation_chunks", settings.RAG_MAX_GENERATION_CHUNKS),
         "free_pages_limit": _dynamic_settings.get("free_pages_limit", settings.FREE_PAGES_LIMIT),
         "free_questions_per_day": _dynamic_settings.get("free_questions_per_day", settings.FREE_QUESTIONS_PER_DAY),
         "free_summaries_per_month": _dynamic_settings.get("free_summaries_per_month", settings.FREE_SUMMARIES_PER_MONTH),

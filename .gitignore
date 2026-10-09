@@ -21,6 +21,8 @@ backend/*.pyc
 backend/.venv/
 backend/venv/
 backend/uploads/
+backend_stdout.log
+backend_stderr.log
 
 # Docker / OS
 docker-compose.override.yml
@@ -30,3 +32,12 @@ Thumbs.db
 # Editors
 .vscode/
 .idea/
+
+النسخة المحدثة/
+
+# Local test scripts / data
+backend/_test_*.py
+backend/_test_ids.json
+backend/_make_test_pdf.py
+backend/test_curriculum.pdf
+.playwright-mcp/

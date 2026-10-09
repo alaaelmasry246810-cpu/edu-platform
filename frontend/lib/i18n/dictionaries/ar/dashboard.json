@@ -1,4 +1,15 @@
 {
+  "assignments": {
+    "title": "مهامي",
+    "subtitle": "الامتحانات والتدريبات اللي معلمك كلّفك بيها",
+    "empty": "مفيش مهام لسه",
+    "loadError": "معرفناش نحمّل مهامك",
+    "status": { "open": "متاح دلوقتي", "notOpen": "لسه معملش فتح", "closed": "انتهى الموعد", "done": "تم" },
+    "lastScore": "آخر نتيجة: {pct}%",
+    "startError": "معرفناش نبدأ المهمة دي",
+    "backToList": "← رجوع لمهامي",
+    "submitted": "تم التسليم ✅"
+  },
   "schedule": {
     "title": "📅 جدولي",
     "subtitle": "جدول الحصص المدرسية وجدول المذاكرة الخاص بيك",
@@ -42,19 +53,47 @@
     "status": { "pending": "في الانتظار", "processing": "بيتحلل...", "completed": "جاهز للدراسة", "failed": "فشل التحليل" },
     "pages": "صفحة",
     "startStudying": "ابدأ الدراسة →",
+    "viewExtractedQuestions": "عرض الأسئلة المستخرجة →",
     "aiAnalyzing": "الذكاء الاصطناعي بيحلل...",
     "analysisError": "حصلت مشكلة في التحليل",
-    "loadError": "حصل مشكلة في التحميل"
+    "loadError": "حصل مشكلة في التحميل",
+    "typeFilter": { "all": "الكل", "curriculum": "المناهج", "exam": "الامتحانات" },
+    "groupFilter": { "all": "كل المجموعات", "none": "بدون مجموعة" },
+    "groupUpdateError": "معرفناش نحدّث المجموعة",
+    "delete": "حذف المنهج",
+    "deleteConfirm": "متأكد إنك عايز تحذف المنهج ده؟ هيتحذف معاه كل الوحدات والدروس والأسئلة المرتبطة بيه، والإجراء ده مينفعش يترجع.",
+    "deleteSuccess": "تم حذف المنهج",
+    "deleteError": "فشل حذف المنهج"
   },
   "upload": {
     "title": "رفع منهج جديد",
-    "subtitle": "ادعم PDF، صور، أو مسح QR Code — سيقوم الذكاء الاصطناعي بتحليله وبناء بنك الأسئلة تلقائياً",
+    "subtitle": "بيدعم PDF، صور (لو فيها صفحة عليها QR Code بيودي لمحتوى تاني)، أو صورة تتلقطها بموبايلك — والذكاء الاصطناعي هيحلله ويبني بنك الأسئلة تلقائياً",
     "dropzone": { "hint": "اسحب الملف هنا أو انقر للاختيار", "formats": "PDF, PNG, JPG, WEBP — حتى 50MB" },
-    "fields": { "title": "عنوان المنهج *", "titlePlaceholder": "مثال: منهج الكيمياء للصف الثالث الثانوي", "subject": "المادة", "subjectPlaceholder": "الكيمياء", "grade": "الصف الدراسي", "gradePlaceholder": "الثالث الثانوي" },
+    "contentType": { "curriculum": "📚 مادة دراسية", "exam": "📝 ورقة امتحان" },
+    "fields": { "title": "عنوان المنهج *", "titlePlaceholder": "مثال: منهج الكيمياء للصف الثالث الثانوي", "subject": "المادة", "subjectPlaceholder": "الكيمياء", "grade": "الصف الدراسي", "gradePlaceholder": "الثالث الثانوي", "group": "المجموعة (اختياري)", "groupPlaceholder": "كل المجموعات" },
     "submit": "رفع وتحليل المنهج بالذكاء الاصطناعي 🤖",
     "submitting": "جاري الرفع والمعالجة...",
     "errors": { "noFile": "الرجاء اختيار ملف", "noTitle": "الرجاء إدخال عنوان المنهج", "uploadFailed": "خطأ في رفع الملف" },
-    "success": "تم رفع المنهج! جاري التحليل بالذكاء الاصطناعي..."
+    "success": "تم رفع المنهج! جاري التحليل بالذكاء الاصطناعي...",
+    "phoneUpload": {
+      "button": "📱 امسح للرفع من الموبايل",
+      "startError": "معرفناش نبدأ جلسة رفع من الموبايل",
+      "title": "امسح الكود بموبايلك",
+      "hint": "افتح كاميرا موبايلك وامسح الكود ده عشان ترفع صورة على طول — من غير ما تسجل دخول على الموبايل",
+      "expiresIn": "بينتهي خلال {minutes}",
+      "waiting": "في انتظار الرفع من موبايلك...",
+      "received": "استلمنا الملف من موبايلك ✅"
+    }
+  },
+  "mobileUpload": {
+    "title": "ارفع من موبايلك",
+    "subtitle": "التقط صورة أو اختار واحدة من المعرض",
+    "submit": "رفع",
+    "submitting": "جاري الرفع...",
+    "success": "تم الرفع! تقدر ترجع لجهازك دلوقتي.",
+    "successHint": "المنهج هيكمل معالجته تلقائيًا.",
+    "expiredToken": "الكود ده منتهي الصلاحية. من فضلك اعمل كود جديد من جهازك.",
+    "missingToken": "الرابط مش صحيح. امسح كود الـ QR تاني من جهازك."
   },
   "exam": {
     "setup": {
@@ -69,7 +108,24 @@
       "difficulty": { "easy": "سهل", "medium": "متوسط", "hard": "صعب" },
       "selectCurriculumFirst": "اختار منهجاً أولاً",
       "preparing": "بيتجهز الاختبار...",
-      "start": "ابدأ الاختبار ✏️"
+      "start": "ابدأ الاختبار ✏️",
+      "lessonLabel": "الدرس",
+      "lessonPlaceholder": "اختار درساً...",
+      "unitLabel": "الوحدة",
+      "unitPlaceholder": "اختار وحدة...",
+      "selectLessonFirst": "اختار درساً",
+      "selectUnitFirst": "اختار وحدة",
+      "customTemplateToggle": "خصّص نوع وعدد الأسئلة",
+      "customTemplateHint": "حدّد أنواع الأسئلة وعدد كل نوع بنفسك بدل الإعداد الافتراضي",
+      "questionTypes": {
+        "mcq": "اختيار من متعدد",
+        "true_false": "صح وخطأ",
+        "fill_blank": "أكمل الفراغ",
+        "why": "علل / اشرح",
+        "essay": "مقالي"
+      },
+      "countLabel": "العدد",
+      "customTotalError": "اختار نوع سؤال واحد على الأقل"
     },
     "active": {
       "questionCounter": "سؤال {current} / {total}",
@@ -88,16 +144,26 @@
       "next": "التالي →",
       "submitting": "بيتسلم...",
       "submit": "سلّم الاختبار ✓",
-      "submitError": "حصل خطأ أثناء التسليم"
+      "submitError": "حصل خطأ أثناء التسليم",
+      "checkButton": "تحقق من الإجابة",
+      "checking": "بيتحقق...",
+      "checkError": "تعذّر التحقق من الإجابة",
+      "correctFeedback": "إجابة صحيحة! ✅",
+      "wrongFeedback": "إجابة غير صحيحة ❌",
+      "pendingReviewFeedback": "📋 محتاج مراجعة المعلم — مفيش إجابة معروفة ليه في المصدر",
+      "whyWrongLabel": "ليه غلط:",
+      "whyCorrectLabel": "ليه دي الصح:"
     },
     "results": {
       "passed": "أحسنت! اجتزت الاختبار",
       "failed": "لم تجتز الاختبار هذه المرة",
-      "pendingManual": "⚠️ بعض الأسئلة المفتوحة لسه بتستنى تقييم المدرس",
+      "pendingManual": "⚠️ بعض الأسئلة لسه بتستنى تقييم المدرس",
       "breakdownTitle": "تفاصيل الإجابات",
       "questionFallback": "سؤال {number}",
       "yourAnswer": "إجابتك:",
       "correctAnswer": "الإجابة الصحيحة:",
+      "whyWrongLabel": "ليه غلط:",
+      "whyCorrectLabel": "ليه دي الصح:",
       "newExam": "اختبار جديد 🔄"
     },
     "createError": "تعذّر إنشاء الاختبار",
@@ -203,11 +269,20 @@
     "generatingFlashcards": "🃏 الذكاء الاصطناعي بيعمل فلاش كارد...",
     "aiWorking": "🤖 الذكاء الاصطناعي شغال...",
     "noFlashcards": "مفيش فلاش كارد — اضغط على التبويب تاني لتوليدها",
+    "noExtractedQuestions": "معرفناش نلاقي أي أسئلة في صفحة الامتحان الممسوحة دي",
     "clickTabPrompt": "اضغط على أي تبويب لتحميل المحتوى",
     "selectLessonPrompt": "اختار درس من القائمة",
     "flashcardsRegenerated": "اتعملوا فلاش كارد جديدة! 🃏",
     "genericError": "حصل مشكلة",
-    "question": { "hideAnswer": "إخفاء الإجابة ▲", "showAnswer": "عرض الإجابة ▼", "answerLabel": "✅ الإجابة:" }
+    "question": {
+      "hideAnswer": "إخفاء الإجابة ▲",
+      "showAnswer": "عرض الإجابة ▼",
+      "answerLabel": "✅ الإجابة:",
+      "delete": "حذف السؤال",
+      "deleteConfirm": "متأكد إنك عايز تحذف السؤال ده؟",
+      "deleteSuccess": "تم حذف السؤال",
+      "deleteError": "فشل حذف السؤال"
+    }
   },
   "flashcards": {
     "empty": "مفيش فلاش كارد",

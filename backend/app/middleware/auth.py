@@ -39,6 +39,16 @@ def create_refresh_token(user_id: str) -> str:
     )
 
 
+def create_upload_session_token(user_id: str, role: str) -> str:
+    """Short-lived token scoped to a single action: uploading a curriculum
+    from a phone that scanned a QR code, without a full login on that device."""
+    expire = datetime.utcnow() + timedelta(minutes=10)
+    return jwt.encode(
+        {"sub": user_id, "role": role, "exp": expire, "type": "upload_session"},
+        settings.SECRET_KEY, algorithm=settings.ALGORITHM
+    )
+
+
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_db)
@@ -52,6 +62,36 @@ async def get_current_user(
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         user_id: str = payload.get("sub")
         if not user_id or payload.get("type") != "access":
+            raise credentials_exc
+    except JWTError:
+        raise credentials_exc
+
+    result = await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
+    user = result.scalar_one_or_none()
+
+    if not user:
+        raise credentials_exc
+    if user.status != AccountStatus.ACTIVE:
+        raise HTTPException(status_code=403, detail=f"Account is {user.status.value}")
+    return user
+
+
+async def get_uploader(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db)
+) -> User:
+    """Like get_current_user, but also accepts a QR-minted upload_session
+    token. Only wire this into the one route that should accept it —
+    an upload_session token must never work anywhere else."""
+    credentials_exc = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid or expired credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        user_id: str = payload.get("sub")
+        if not user_id or payload.get("type") not in ("access", "upload_session"):
             raise credentials_exc
     except JWTError:
         raise credentials_exc

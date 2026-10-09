@@ -19,6 +19,7 @@ tiktoken==0.7.0
 # Document Processing (OCR handled via OpenAI Vision, no local tesseract/opencv needed)
 pymupdf==1.24.10
 pillow==10.4.0
+zxing-cpp==2.2.0
 
 # Payments
 stripe==10.12.0

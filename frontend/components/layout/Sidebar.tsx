@@ -18,6 +18,7 @@ export default function Sidebar() {
     { href: "/dashboard/upload",     label: t("nav.uploadCurriculum"),  icon: "⬆️" },
     { href: "/dashboard/schedule",   label: t("nav.schedule"),          icon: "📅" },
     { href: "/dashboard/exam",       label: t("nav.exams"),             icon: "✏️" },
+    { href: "/dashboard/assignments", label: t("nav.myAssignments"),    icon: "📝" },
     { href: "/dashboard/grades",     label: t("nav.grades"),            icon: "📊" },
     { href: "/dashboard/progress",   label: t("nav.progress"),          icon: "📈" },
     { href: "/dashboard/summary",    label: t("nav.glossary"),          icon: "📖" },
@@ -28,6 +29,8 @@ export default function Sidebar() {
   const teacherNav = [
     { href: "/teacher",                   label: t("nav.teacherHome"),   icon: "🏠" },
     { href: "/teacher/students",          label: t("nav.myStudents"),    icon: "👥" },
+    { href: "/teacher/groups",            label: t("nav.myGroups"),      icon: "🧑‍🤝‍🧑" },
+    { href: "/teacher/assignments",       label: t("nav.assignments"),   icon: "📝" },
     { href: "/teacher/pending",           label: t("nav.needsReview"),   icon: "📋" },
     { href: "/teacher/exam-configs",      label: t("nav.examConfigs"),   icon: "⚙️" },
     { href: "/teacher/question-bank",     label: t("nav.questionBank"),  icon: "🗂️" },

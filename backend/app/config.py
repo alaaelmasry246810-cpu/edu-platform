@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     EMBEDDING_DIMENSION: int = 3072  # text-embedding-3-large
 
     # RAG
-    RAG_TOP_K: int = 8           # chunks retrieved per query
+    RAG_MAX_GENERATION_CHUNKS: int = 40   # chunk budget when a generation task pulls a full curriculum/unit/lesson scope
     RAG_CHUNK_SIZE: int = 800    # tokens per chunk
     RAG_CHUNK_OVERLAP: int = 100
 
@@ -53,6 +53,7 @@ class Settings(BaseSettings):
 
     # File Upload
     MAX_UPLOAD_SIZE_MB: int = 50
+    MAX_VIDEO_UPLOAD_MB: int = 500  # teacher lesson videos / podcasts (interactive videos)
     UPLOAD_DIR: str = "/app/uploads"
 
     @property
@@ -60,7 +61,14 @@ class Settings(BaseSettings):
         return [o.strip() for o in self.CORS_ORIGINS.split(",")]
 
     class Config:
-        env_file = ".env"
+        # Docker containers get real env vars from docker-compose (no .env file
+        # inside the image); a native run (uvicorn launched with cwd=backend/)
+        # instead needs the repo-root .env, one directory up.
+        env_file = ("../.env", ".env")
+        # The root .env also holds vars meant for other services (postgres,
+        # the frontend build) that aren't Settings fields — ignore rather than
+        # reject them.
+        extra = "ignore"
 
 
 settings = Settings()

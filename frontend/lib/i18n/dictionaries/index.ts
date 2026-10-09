@@ -3,12 +3,14 @@ import auth_ar from "./ar/auth.json";
 import dashboard_ar from "./ar/dashboard.json";
 import teacher_ar from "./ar/teacher.json";
 import admin_ar from "./ar/admin.json";
+import video_ar from "./ar/video.json";
 
 import common_en from "./en/common.json";
 import auth_en from "./en/auth.json";
 import dashboard_en from "./en/dashboard.json";
 import teacher_en from "./en/teacher.json";
 import admin_en from "./en/admin.json";
+import video_en from "./en/video.json";
 
 export const dictionaries = {
   ar: {
@@ -17,6 +19,7 @@ export const dictionaries = {
     dashboard: dashboard_ar,
     teacher: teacher_ar,
     admin: admin_ar,
+    video: video_ar,
   },
   en: {
     ...common_en,
@@ -24,5 +27,6 @@ export const dictionaries = {
     dashboard: dashboard_en,
     teacher: teacher_en,
     admin: admin_en,
+    video: video_en,
   },
 } as const;

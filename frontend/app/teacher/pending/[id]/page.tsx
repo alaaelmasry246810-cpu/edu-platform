@@ -37,6 +37,7 @@ export default function EvaluatePage() {
   const [saving, setSaving] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<Record<string, AISuggestion>>({});
+  const [editingAuto, setEditingAuto] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     teacherAPI.attemptDetail(id)
@@ -94,8 +95,8 @@ export default function EvaluatePage() {
   if (loading) return <div className="flex items-center justify-center h-64"><div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" /></div>;
   if (!attempt) return <p className="text-center text-slate-400">{t("teacher.pendingDetail.notFound")}</p>;
 
-  const openQuestions: QuestionResult[] = (attempt.question_results ?? []).filter((r: QuestionResult) => r.needs_manual || r.type === "why" || r.type === "essay");
-  const autoQuestions: QuestionResult[] = (attempt.question_results ?? []).filter((r: QuestionResult) => !r.needs_manual && r.type !== "why" && r.type !== "essay");
+  const openQuestions: QuestionResult[] = (attempt.question_results ?? []).filter((r: QuestionResult) => r.needs_manual);
+  const autoQuestions: QuestionResult[] = (attempt.question_results ?? []).filter((r: QuestionResult) => !r.needs_manual);
 
   return (
     <div dir={dir} className="max-w-2xl">
@@ -154,6 +155,24 @@ export default function EvaluatePage() {
                   <p className="font-medium text-slate-800 dark:text-slate-200 mb-3 text-sm leading-relaxed">
                     {attempt.questions?.[res.q_index]?.question ?? t("teacher.pendingDetail.question", { n: res.q_index + 1 })}
                   </p>
+
+                  {!!res.options?.length && (
+                    <div className="flex flex-wrap gap-1.5 mb-3">
+                      {res.options.map((opt, oi) => (
+                        <span
+                          key={oi}
+                          className={clsx(
+                            "text-xs px-2.5 py-1 rounded-lg",
+                            opt === res.student_answer
+                              ? "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold"
+                              : "bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400"
+                          )}
+                        >
+                          {opt}
+                        </span>
+                      ))}
+                    </div>
+                  )}
 
                   <div className="bg-slate-50 dark:bg-slate-700 rounded-xl p-3 mb-3 text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
                     <span className="text-xs text-slate-400 block mb-1">{t("teacher.pendingDetail.studentAnswer")}</span>
@@ -217,25 +236,53 @@ export default function EvaluatePage() {
         </div>
       )}
 
-      {/* Auto-graded summary */}
+      {/* Auto-graded summary — editable in case the teacher disagrees with one */}
       {autoQuestions.length > 0 && (
         <div className="mb-5">
           <h2 className="font-bold text-slate-800 dark:text-slate-100 mb-3">{t("teacher.pendingDetail.autoGradedTitle")}</h2>
           <div className="space-y-2">
-            {autoQuestions.map(res => (
-              <div key={res.q_index} className={clsx(
-                "flex items-center gap-3 px-4 py-2.5 rounded-xl border text-sm",
-                res.is_correct ? "border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/10" : "border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/10"
-              )}>
-                <span className="text-base">{res.is_correct ? "✅" : "❌"}</span>
-                <span className="flex-1 text-slate-700 dark:text-slate-300 truncate">
-                  {attempt.questions?.[res.q_index]?.question?.slice(0, 60) ?? t("teacher.pendingDetail.question", { n: res.q_index + 1 })}...
-                </span>
-                <span className="font-mono text-xs text-slate-500">
-                  {res.points_earned}/{res.max_points}
-                </span>
-              </div>
-            ))}
+            {autoQuestions.map(res => {
+              const isEditing = editingAuto.has(res.q_index);
+              return (
+                <div key={res.q_index} className={clsx(
+                  "px-4 py-2.5 rounded-xl border text-sm",
+                  res.is_correct ? "border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/10" : "border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/10"
+                )}>
+                  <div className="flex items-center gap-3">
+                    <span className="text-base">{res.is_correct ? "✅" : "❌"}</span>
+                    <span className="flex-1 text-slate-700 dark:text-slate-300 truncate">
+                      {attempt.questions?.[res.q_index]?.question?.slice(0, 60) ?? t("teacher.pendingDetail.question", { n: res.q_index + 1 })}...
+                    </span>
+                    {!isEditing && (
+                      <button
+                        onClick={() => setEditingAuto(prev => new Set(prev).add(res.q_index))}
+                        className="text-xs text-slate-400 hover:text-blue-600"
+                        title={t("teacher.pendingDetail.overrideScore")}
+                      >
+                        ✏️
+                      </button>
+                    )}
+                    <span className="font-mono text-xs text-slate-500">
+                      {manualGrades[String(res.q_index)] ?? res.points_earned}/{res.max_points}
+                    </span>
+                  </div>
+                  {isEditing && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <input
+                        type="number"
+                        min={0}
+                        max={res.max_points}
+                        step={0.5}
+                        value={manualGrades[String(res.q_index)] ?? ""}
+                        onChange={e => setManualGrades(prev => ({ ...prev, [String(res.q_index)]: e.target.value }))}
+                        className="w-24 border border-slate-300 dark:border-slate-600 rounded-lg px-2.5 py-1 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-slate-700"
+                      />
+                      <span className="text-xs text-slate-400">{t("teacher.pendingDetail.outOfShort", { n: res.max_points })}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

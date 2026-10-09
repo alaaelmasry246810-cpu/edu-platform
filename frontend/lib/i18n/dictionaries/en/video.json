@@ -1,0 +1,141 @@
+{
+  "player": {
+    "scene": "Scene {n} of {total}",
+    "play": "Play",
+    "quickQuestion": "Quick question",
+    "correct": "✅ Correct!",
+    "wrong": "❌ Not quite — the answer is: {answer}",
+    "continue": "Continue ▶",
+    "done": "You finished the video!",
+    "score": "You got {correct} of {total} right",
+    "replay": "Watch again",
+    "prev": "Previous scene",
+    "next": "Next scene",
+    "fullscreen": "Fullscreen",
+    "questionsInVideo": "This video has {n} interactive questions — they pop up as you watch"
+  },
+  "studio": {
+    "title": "New interactive video",
+    "methods": {
+      "ai": {
+        "name": "AI-generated",
+        "desc": "Script + slides + narration"
+      },
+      "podcast": {
+        "name": "Podcast",
+        "desc": "Record your voice, slides go on top"
+      },
+      "upload": {
+        "name": "Upload video",
+        "desc": "Your video + in-video questions"
+      }
+    },
+    "scope": "Video for",
+    "scopeLesson": "Lesson: {title}",
+    "scopeUnit": "Whole chapter: {title}",
+    "titlePlaceholder": "Video title (optional)",
+    "voice": "Narrator voice",
+    "sceneCount": "Scenes: {n}",
+    "aiHint": "Each scene shows what it explains: chemical equations with the reaction animated, organs and body systems drawn with each part lighting up as the narrator reaches it, plus process steps, formulas and real images. Everything is editable afterwards.",
+    "record": "Start recording",
+    "reRecord": "Record again",
+    "stop": "Stop",
+    "or": "or",
+    "chooseAudio": "Choose an audio file",
+    "podcastHint": "Explain the lesson in your own voice. It gets transcribed, then slides follow what you say and questions land in the right places. Transcription limit is 25MB (about an hour of webm).",
+    "autoQuestions": "Add interactive questions automatically with AI",
+    "uploadHint": "Videos under 25MB are transcribed so questions land at the right moment; larger ones get questions from the curriculum spread across the video, which you can retime.",
+    "uploading": "Uploading {pct}%",
+    "working": "Working...",
+    "submit": {
+      "ai": "🤖 Generate video",
+      "podcast": "🎙️ Upload & build video",
+      "upload": "📤 Upload video"
+    },
+    "micDenied": "Can't access the microphone — allow it in your browser",
+    "needAudio": "Record or choose an audio file first",
+    "needVideo": "Choose a video file first",
+    "started": "Preparing your video — it will show up here when ready",
+    "error": "Something went wrong, try again",
+    "scriptSource": "Script source",
+    "scriptModes": {
+      "lesson_text": {
+        "name": "📖 From the lesson text",
+        "desc": "Narration follows the book's text in order, with its own terms"
+      },
+      "explain": {
+        "name": "🧑‍🏫 Free explanation",
+        "desc": "Teacher-style explanation with an intro and summary"
+      }
+    },
+    "sourceTextPlaceholder": "Optional: paste the lesson text to script from exactly (left empty, the uploaded curriculum's lesson text is used)"
+  },
+  "voices": {
+    "nova": "Nova (female)",
+    "shimmer": "Shimmer (female)",
+    "alloy": "Alloy (neutral)",
+    "echo": "Echo (male)",
+    "fable": "Fable (male)",
+    "onyx": "Onyx (deep male)"
+  },
+  "editor": {
+    "error": "Something went wrong, try again",
+    "saved": "Changes saved",
+    "audioUpdated": "New narration recorded for edited scenes",
+    "published": "Video is now visible to students",
+    "unpublished": "Video hidden from students",
+    "regenerateConfirm": "The video will be regenerated with AI and your edits will be lost. Continue?",
+    "deleteConfirm": "Delete this video?",
+    "deleted": "Video deleted",
+    "isPublished": "Published",
+    "publish": "Publish to students",
+    "regenerate": "Regenerate",
+    "delete": "Delete",
+    "questions": "Questions",
+    "scenes": "Scenes",
+    "mcq": "Multiple choice",
+    "trueFalse": "True / False",
+    "afterScene": "After scene",
+    "atSecond": "At second",
+    "auto": "auto",
+    "questionText": "Question text",
+    "markCorrect": "Correct answer",
+    "option": "Option {n}",
+    "explanation": "Explanation (optional)",
+    "addQuestion": "Add question",
+    "startSecond": "Starts at second",
+    "bullets": "On-screen points — one per line",
+    "narration": "Narration",
+    "saving": "Saving...",
+    "save": "Save changes",
+    "visual": "Visual"
+  },
+  "list": {
+    "title": "Interactive videos",
+    "create": "New interactive video",
+    "empty": "No interactive videos for this lesson yet",
+    "unitWide": "Whole chapter",
+    "lessonOnly": "This lesson"
+  },
+  "status": {
+    "published": "Published",
+    "draft": "Draft",
+    "pending": "Queued",
+    "processing": "Processing",
+    "failed": "Failed",
+    "failedMsg": "Video preparation failed",
+    "workingMsg": {
+      "ai": "AI is writing the script and recording narration... this takes a minute or two",
+      "podcast": "Transcribing your recording and laying slides and questions over it...",
+      "upload": "Analysing the video and placing interactive questions..."
+    }
+  },
+  "visuals": {
+    "bullets": "Points only",
+    "equation": "⚗️ Equation & reaction",
+    "formula": "📐 Formula",
+    "diagram": "🫀 Diagram",
+    "process": "🔁 Steps / pathway",
+    "image": "🖼️ Image"
+  }
+}
