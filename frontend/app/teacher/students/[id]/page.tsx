@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { fmtTime } from "@/components/activities/Leaderboard";
 import { teacherAPI } from "@/lib/api";
 import toast from "react-hot-toast";
 import clsx from "clsx";
@@ -101,6 +102,37 @@ export default function StudentAttemptsPage() {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+      {/* Games & activities results (assigned, live games, share links) */}
+      {(data.activity_attempts ?? []).length > 0 && (
+        <div className="mt-8">
+          <h2 className="font-bold text-slate-800 dark:text-slate-100 mb-3">🎮 {t("games.records.activityResults")}</h2>
+          <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-500 text-xs">
+                <tr>
+                  <th className="p-3 text-start">{t("games.records.activity")}</th>
+                  <th className="p-3">{t("games.leaderboard.correct")}</th>
+                  <th className="p-3">{t("games.leaderboard.time")}</th>
+                  <th className="p-3">{t("games.leaderboard.score")}</th>
+                  <th className="p-3">{t("games.records.date")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.activity_attempts.map((x: any, k: number) => (
+                  <tr key={k} className="border-t border-slate-100 dark:border-slate-700">
+                    <td className="p-3"><Link href={`/teacher/activities/${x.activity_id}`} className="text-blue-600 hover:underline">{x.title}</Link>
+                      <span className="ms-2 text-[10px] text-slate-400">{x.template === "live" ? "🔴" : t(`games.templates.${x.template}`)}</span></td>
+                    <td className="p-3 text-center font-bold">{x.pct}% <span className="text-xs font-normal text-slate-400">({x.correct}/{x.total})</span></td>
+                    <td className="p-3 text-center tabular-nums">{fmtTime(x.duration_sec)}</td>
+                    <td className="p-3 text-center">{x.score}</td>
+                    <td className="p-3 text-center text-slate-500">{new Date(x.at).toLocaleDateString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

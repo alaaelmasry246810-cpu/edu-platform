@@ -55,8 +55,16 @@ export function getTeacherGuide(locale: "ar" | "en"): { title: string; subtitle:
           items: [
             { label: "Turn the link on", desc: "Open the activity → 🔗 Share tab → Share link. Copy it, send it on WhatsApp, or show the QR code" },
             { label: "You control it", desc: "Switch the link off any time; 🔄 New link kills the old one immediately" },
-            { label: "Who can open it", desc: "\"Open to anyone\": people without an account play under a name. Off: only your registered students, after signing in" },
+            { label: "Who can open it", desc: "\"Open to anyone\": the link opens a sign-up screen — your registered students sign in (the result goes to their record), anyone else enters name, mobile and class. A mobile number that belongs to one of your students must sign in, so nobody can submit under a student's name. Off: only your registered students" },
             { label: "Leaderboard", desc: "Ranked by % correct, then the faster time, then points — each player's best attempt in the assessed games counts (flashcards, wheel, gold quest and tower are practice only). Choose whether players see it after finishing; you always see it in the report" },
+          ],
+        },
+        {
+          icon: "📒", title: "Results Records", desc: "Everyone who played your activities, in one place",
+          items: [
+            { label: "Who's in it", desc: "Your students and everyone who signed up through a share link, with mobile and class — filter or search, open a row for each activity's best % and time" },
+            { label: "➕ Add to my students", desc: "Turns a share-link participant into your student: creates the account with their mobile (temporary password shown once) and moves all their past results into their record" },
+            { label: "Student record", desc: "Each student's page now lists their games & activities results next to their exams" },
           ],
         },
         {
@@ -183,8 +191,16 @@ export function getTeacherGuide(locale: "ar" | "en"): { title: string; subtitle:
           items: [
             { label: "فعّل الرابط", desc: "افتح النشاط ← تاب 🔗 مشاركة ← رابط مشاركة. انسخه أو ابعته واتساب أو اعرض كود QR" },
             { label: "إنت المتحكم", desc: "تقفل الرابط في أي وقت، و🔄 رابط جديد بيلغي القديم فوراً" },
-            { label: "مين يقدر يفتحه", desc: "«مسموح لأي حد»: اللي مالوش حساب يلعب باسمه. لو قفلته: طلابك المسجلين بس بعد ما يسجلوا دخول" },
+            { label: "مين يقدر يفتحه", desc: "«مسموح لأي حد»: الرابط بيفتح على شاشة تسجيل — طالبك المسجّل يدخل بحسابه (والنتيجة تروح سجله)، وأي حد تاني يكتب اسمه وموبايله وفصله. ولو الرقم بتاع طالب عندك لازم يسجّل دخول، عشان محدش يحل باسم طالب. لو قفلته: طلابك المسجلين بس" },
             { label: "الترتيب", desc: "بنسبة الإجابات الصح، ولو اتساووا الأسرع، وبعدين النقاط — وبتتحسب أحسن محاولة لكل واحد في الألعاب اللي فيها تقييم (البطاقات والعجلة وصيد الذهب والبرج للتدريب بس). تختار يظهر للطلاب بعد ما يخلصوا ولا لأ، وإنت بتشوفه دايماً في التقرير" },
+          ],
+        },
+        {
+          icon: "📒", title: "سجل النتائج", desc: "كل اللي حلّوا أنشطتك في مكان واحد",
+          items: [
+            { label: "مين فيه", desc: "طلابك وكل اللي سجّلوا من رابط المشاركة، بالموبايل والفصل — فلتر أو دوّر، وافتح أي صف تشوف أحسن نسبة ووقت في كل نشاط" },
+            { label: "➕ أضفه لطلابي", desc: "يحوّل اللي سجّل من الرابط لطالب عندك: يعمل حسابه برقم موبايله (كلمة سر مؤقتة بتظهر مرة واحدة) وينقل كل نتايجه القديمة لسجله" },
+            { label: "سجل الطالب", desc: "صفحة كل طالب بقت بتعرض نتايج الأنشطة والألعاب جنب الامتحانات" },
           ],
         },
         {

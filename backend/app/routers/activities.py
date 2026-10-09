@@ -1,5 +1,6 @@
 """Games & activities (Wordwall/Quizizz/Blooket/Baamboozle-style) and
 spaced-repetition flashcard study (Quizlet-style)."""
+import re
 import secrets
 import uuid
 from datetime import datetime, timedelta
@@ -10,8 +11,8 @@ from sqlalchemy import select, or_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.middleware.auth import get_current_user, get_optional_user, check_quota
-from app.models.user import User, UserRole
+from app.middleware.auth import get_current_user, get_optional_user, check_quota, hash_password
+from app.models.user import User, UserRole, AccountStatus
 from app.models.curriculum import Curriculum, Lesson
 from app.models.assignment import StudentGroup
 from app.models.activity import Activity, ActivityAttempt, FlashcardReview
@@ -261,6 +262,36 @@ async def get_shared(token: str, user: User | None = Depends(get_optional_user),
     return {**_serialize(a, user, owner.full_name if owner else None), "signed_in_as": user.full_name if user else None}
 
 
+def _digits(phone: str | None) -> str:
+    return re.sub(r"\D", "", phone or "")
+
+
+async def _registered_student(a: Activity, phone: str, db: AsyncSession) -> User | None:
+    """The activity owner's own student with this phone number, if any."""
+    d = _digits(phone)
+    if not d:
+        return None
+    students = (await db.execute(
+        select(User).where(User.teacher_id == a.owner_id, User.role == UserRole.STUDENT, User.phone.is_not(None))
+    )).scalars().all()
+    return next((s for s in students if _digits(s.phone) == d), None)
+
+
+class GuestCheckBody(BaseModel):
+    phone: str
+
+
+@router.post("/shared/{token}/check-guest")
+async def check_guest(token: str, body: GuestCheckBody, user: User | None = Depends(get_optional_user), db: AsyncSession = Depends(get_db)):
+    """Sign-up screen: is this phone already one of the teacher's students?
+    Then they must sign in, so the result lands in their own record (and
+    nobody can submit under a registered student's name)."""
+    a = await _shared_activity(token, user, db)
+    if not 8 <= len(_digits(body.phone)) <= 15:
+        raise HTTPException(status_code=422, detail="اكتب رقم موبايل صحيح")
+    return {"registered": await _registered_student(a, body.phone, db) is not None}
+
+
 class SharedAttemptBody(BaseModel):
     template: str
     score: int = 0
@@ -270,15 +301,26 @@ class SharedAttemptBody(BaseModel):
     answers: list[dict] = []
     guest_name: str | None = None
     guest_key: str | None = None
+    guest_phone: str | None = None
+    guest_class: str | None = None
 
 
 @router.post("/shared/{token}/attempts", status_code=201)
 async def save_shared_attempt(token: str, body: SharedAttemptBody, user: User | None = Depends(get_optional_user), db: AsyncSession = Depends(get_db)):
     a = await _shared_activity(token, user, db)
+    if user:
+        await _record_attempt(a, body, db, user=user)
+        return {"message": "saved"}
     guest_name = (body.guest_name or "").strip()[:40]
-    if not user and not guest_name:
-        raise HTTPException(status_code=422, detail="اكتب اسمك الأول")
-    await _record_attempt(a, body, db, user=user, guest_name=None if user else guest_name, guest_key=None if user else (body.guest_key or "")[:64] or None)
+    phone = _digits(body.guest_phone)
+    if not guest_name or not 8 <= len(phone) <= 15:
+        raise HTTPException(status_code=422, detail="اكتب اسمك ورقم موبايلك الأول")
+    if await _registered_student(a, phone, db):
+        raise HTTPException(status_code=409, detail="الرقم ده مسجّل لطالب عند المدرس — سجّل دخولك عشان النتيجة تتسجل في سجلك")
+    await _record_attempt(
+        a, body, db, user=None, guest_name=guest_name, guest_key=(body.guest_key or "")[:64] or None,
+        guest_phone=phone, guest_class=(body.guest_class or "").strip()[:100] or None,
+    )
     return {"message": "saved"}
 
 
@@ -306,7 +348,7 @@ async def _leaderboard(a: Activity, db: AsyncSession, me: User | None, guest_key
     )).all()
     best: dict[str, tuple] = {}
     for att, name in rows:
-        key = f"u:{att.user_id}" if att.user_id else f"g:{att.guest_key or att.guest_name}"
+        key = f"u:{att.user_id}" if att.user_id else f"g:{att.guest_phone or att.guest_key or att.guest_name}"
         pct = att.correct / att.total if att.total else 0
         rank_key = (-pct, att.duration_sec, -att.score)
         if key not in best or rank_key < best[key][0]:
@@ -422,7 +464,11 @@ async def save_attempt(activity_id: uuid.UUID, body: AttemptBody, user: User = D
     return {"message": "saved"}
 
 
-async def _record_attempt(a: Activity, body, db: AsyncSession, *, user: User | None, guest_name: str | None = None, guest_key: str | None = None) -> None:
+async def _record_attempt(
+    a: Activity, body, db: AsyncSession, *, user: User | None,
+    guest_name: str | None = None, guest_key: str | None = None,
+    guest_phone: str | None = None, guest_class: str | None = None,
+) -> None:
     n = len(a.items or [])
     answers = [
         {"i": int(x["i"]), "correct": bool(x.get("correct")), "choice": str(x.get("choice") or "")[:200], "ms": int(x.get("ms") or 0)}
@@ -430,6 +476,7 @@ async def _record_attempt(a: Activity, body, db: AsyncSession, *, user: User | N
     ][:500]
     db.add(ActivityAttempt(
         activity_id=a.id, user_id=user.id if user else None, guest_name=guest_name, guest_key=guest_key,
+        guest_phone=guest_phone, guest_class=guest_class,
         template=body.template[:30],
         score=min(max(0, body.score), 10_000_000), correct=max(0, body.correct), total=max(0, body.total),
         duration_sec=min(max(0.0, body.duration_sec), 86_400.0), answers=answers,
@@ -450,8 +497,9 @@ async def activity_report(activity_id: uuid.UUID, user: User = Depends(get_curre
     students: dict[str, dict] = {}
     per_item = [{"q": it["q"], "a": it["a"], "right": 0, "wrong": 0, "wrong_choices": {}} for it in (a.items or [])]
     for att, name in rows:
-        key = str(att.user_id) if att.user_id else f"g:{att.guest_key or att.guest_name}"
+        key = str(att.user_id) if att.user_id else f"g:{att.guest_phone or att.guest_key or att.guest_name}"
         s = students.setdefault(key, {"name": name or att.guest_name or "—", "guest": att.user_id is None,
+                                      "phone": att.guest_phone, "class": att.guest_class,
                                       "attempts": 0, "best_score": 0, "best_pct": 0, "best_time": None, "last_at": None})
         s["attempts"] += 1
         # Time of the best-scoring attempt (faster wins a tie), as on the leaderboard.
@@ -481,6 +529,104 @@ async def activity_report(activity_id: uuid.UUID, user: User = Depends(get_curre
         "items": per_item,
         "total_attempts": len(rows),
     }
+
+
+# ── Teacher records: everyone who played the teacher's activities ──
+
+@router.get("/records/all")
+async def records(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """One row per participant — the teacher's students and the people who
+    signed up through a share link — with their best result per activity."""
+    _require_teacher(user)
+    rows = (await db.execute(
+        select(ActivityAttempt, Activity.title, User)
+        .join(Activity, Activity.id == ActivityAttempt.activity_id)
+        .outerjoin(User, User.id == ActivityAttempt.user_id)
+        .where(Activity.owner_id == user.id)
+        .order_by(ActivityAttempt.created_at)
+    )).all()
+    people: dict[str, dict] = {}
+    for att, title, u in rows:
+        if u:
+            key = f"u:{u.id}"
+            p = people.setdefault(key, {
+                "key": key, "kind": "student" if u.teacher_id == user.id else "account", "student_id": str(u.id),
+                "name": u.full_name, "phone": u.phone, "class": None, "activities": {},
+            })
+        else:
+            key = f"g:{att.guest_phone or att.guest_key or att.guest_name}"
+            p = people.setdefault(key, {
+                "key": key, "kind": "guest", "student_id": None,
+                "name": att.guest_name, "phone": att.guest_phone, "class": att.guest_class, "activities": {},
+            })
+            p["name"], p["class"] = att.guest_name or p["name"], att.guest_class or p["class"]  # latest details
+        act = p["activities"].setdefault(str(att.activity_id), {
+            "activity_id": str(att.activity_id), "title": title, "attempts": 0,
+            "best_pct": 0, "best_score": 0, "best_time": None, "last_at": None,
+        })
+        pct = round(100 * att.correct / att.total) if att.total else 0
+        act["attempts"] += 1
+        if pct > act["best_pct"] or (pct == act["best_pct"] and (act["best_time"] is None or att.duration_sec < act["best_time"])):
+            act["best_pct"], act["best_time"] = pct, round(att.duration_sec, 1)
+        act["best_score"] = max(act["best_score"], att.score)
+        act["last_at"] = att.created_at.isoformat()
+    out = []
+    for p in people.values():
+        acts = sorted(p["activities"].values(), key=lambda x: x["last_at"] or "", reverse=True)
+        out.append({
+            **p, "activities": acts, "activity_count": len(acts),
+            "avg_pct": round(sum(x["best_pct"] for x in acts) / len(acts)) if acts else 0,
+            "last_at": acts[0]["last_at"] if acts else None,
+        })
+    return {"participants": sorted(out, key=lambda x: x["last_at"] or "", reverse=True)}
+
+
+class ConvertGuestBody(BaseModel):
+    phone: str
+    full_name: str | None = None
+    email: str | None = None
+
+
+@router.post("/records/convert")
+async def convert_guest(body: ConvertGuestBody, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Add a share-link participant as one of my students: creates the account
+    (temporary password shown once) and moves their past results into it."""
+    _require_teacher(user)
+    from app.routers.teacher import _generate_default_password
+    phone = _digits(body.phone)
+    if not 8 <= len(phone) <= 15:
+        raise HTTPException(status_code=422, detail="رقم موبايل غير صحيح")
+    taken = [u for u in (await db.execute(select(User).where(User.phone.is_not(None)))).scalars().all() if _digits(u.phone) == phone]
+    if taken:
+        raise HTTPException(status_code=409, detail="الرقم ده عليه حساب بالفعل")
+    attempts = (await db.execute(
+        select(ActivityAttempt).join(Activity, Activity.id == ActivityAttempt.activity_id)
+        .where(Activity.owner_id == user.id, ActivityAttempt.user_id.is_(None), ActivityAttempt.guest_phone == phone)
+        .order_by(ActivityAttempt.created_at.desc())
+    )).scalars().all()
+    name = (body.full_name or (attempts[0].guest_name if attempts else "") or "").strip()
+    if not name:
+        raise HTTPException(status_code=422, detail="اكتب اسم الطالب")
+    email = (body.email or "").strip().lower() or f"{phone}@students.invalid"
+    if (await db.execute(select(User).where(User.email == email))).scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="البريد الإلكتروني مستخدم بالفعل")
+    student_code = None
+    if user.teacher_code:
+        count = await db.scalar(select(func.count(User.id)).where(User.teacher_id == user.id))
+        student_code = f"{user.teacher_code}-{(count or 0) + 1:02d}"
+    temp_password = _generate_default_password(name)
+    student = User(
+        email=email, phone=phone, full_name=name, hashed_password=hash_password(temp_password),
+        role=UserRole.STUDENT, status=AccountStatus.ACTIVE, teacher_id=user.id,
+        student_code=student_code, must_change_password=True,
+    )
+    db.add(student)
+    await db.flush()
+    for att in attempts:
+        att.user_id = student.id
+    await db.commit()
+    return {"student_id": str(student.id), "full_name": name, "phone": phone, "student_code": student_code,
+            "temporary_password": temp_password, "moved_results": len(attempts)}
 
 
 # ── Flashcard study (spaced repetition) ──────────────────────

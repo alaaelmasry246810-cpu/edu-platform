@@ -49,6 +49,9 @@ async def init_db():
         await conn.execute(text("ALTER TABLE activity_attempts ALTER COLUMN user_id DROP NOT NULL"))
         await conn.execute(text("ALTER TABLE activity_attempts ADD COLUMN IF NOT EXISTS guest_name VARCHAR(40)"))
         await conn.execute(text("ALTER TABLE activity_attempts ADD COLUMN IF NOT EXISTS guest_key VARCHAR(64)"))
+        await conn.execute(text("ALTER TABLE activity_attempts ADD COLUMN IF NOT EXISTS guest_phone VARCHAR(30)"))
+        await conn.execute(text("ALTER TABLE activity_attempts ADD COLUMN IF NOT EXISTS guest_class VARCHAR(100)"))
+        await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_activity_attempts_guest_phone ON activity_attempts (guest_phone)"))
         # Lessons that cached the "no content found" fallback before it was
         # excluded from caching get regenerated on next view.
         from app.services.rag_service import NO_CONTENT_MESSAGE

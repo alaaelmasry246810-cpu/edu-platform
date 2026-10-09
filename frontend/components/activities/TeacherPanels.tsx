@@ -287,7 +287,8 @@ export function ReportPanel({ activityId }: { activityId: string }) {
             <tbody>
               {report.students.map((s: any, k: number) => (
                 <tr key={k} className="border-t border-slate-100 dark:border-slate-800">
-                  <td className="p-2 font-medium">{s.name}{s.guest && <span className="ms-1 text-[10px] text-slate-400">{t("games.leaderboard.guest")}</span>}</td>
+                  <td className="p-2 font-medium">{s.name}{s.guest && <span className="ms-1 text-[10px] text-slate-400">{t("games.leaderboard.guest")}</span>}
+                    {s.guest && (s.phone || s.class) && <span className="block text-[11px] font-normal text-slate-400" dir="auto">{[s.class, s.phone].filter(Boolean).join(" · ")}</span>}</td>
                   <td className="p-2 text-center"><span className={clsx("font-bold", s.best_pct >= 75 ? "text-green-600" : s.best_pct >= 50 ? "text-amber-600" : "text-red-500")}>{s.best_pct}%</span></td>
                   <td className="p-2 text-center">{s.best_score}</td>
                   <td className="p-2 text-center tabular-nums">{s.best_time != null ? fmtTime(s.best_time) : "—"}</td>

@@ -70,6 +70,10 @@ class ActivityAttempt(Base):
     # Groups one guest's attempts (kept in their browser) so the leaderboard
     # shows each guest once even if two pick the same name.
     guest_key: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # What a guest filled in on the share link's sign-up screen — it's how the
+    # teacher's records identify them (phone) and group them (class).
+    guest_phone: Mapped[str | None] = mapped_column(String(30), nullable=True, index=True)
+    guest_class: Mapped[str | None] = mapped_column(String(100), nullable=True)
     template: Mapped[str] = mapped_column(String(30), nullable=False)
     score: Mapped[int] = mapped_column(Integer, default=0)
     correct: Mapped[int] = mapped_column(Integer, default=0)

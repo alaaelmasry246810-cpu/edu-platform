@@ -25,7 +25,10 @@ export default function ChangePasswordPage() {
       await authAPI.changePassword({ new_password: password });
       updateUser({ must_change_password: false });
       toast.success(t("auth.changePassword.success"));
-      if (user?.role === "admin") router.replace("/admin");
+      // ?next=/a/<token> brings a student back to the activity link they signed in from.
+      const next = new URLSearchParams(window.location.search).get("next");
+      if (next && next.startsWith("/") && !next.startsWith("//")) router.replace(next);
+      else if (user?.role === "admin") router.replace("/admin");
       else if (user?.role === "teacher") router.replace("/teacher");
       else router.replace("/dashboard");
     } catch (err: any) {

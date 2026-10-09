@@ -193,8 +193,21 @@ async def student_attempts(
         .order_by(QuizAttempt.started_at.desc())
     )
     attempts = r.scalars().all()
+    from app.models.activity import Activity, ActivityAttempt
+    act_rows = (await db.execute(
+        select(ActivityAttempt, Activity.title)
+        .join(Activity, Activity.id == ActivityAttempt.activity_id)
+        .where(ActivityAttempt.user_id == student_id, Activity.owner_id == student.teacher_id)
+        .order_by(ActivityAttempt.created_at.desc())
+    )).all()
     return {
         "student": {"id": str(student.id), "full_name": student.full_name},
+        "activity_attempts": [{
+            "activity_id": str(att.activity_id), "title": title, "template": att.template,
+            "score": att.score, "correct": att.correct, "total": att.total,
+            "pct": round(100 * att.correct / att.total) if att.total else 0,
+            "duration_sec": round(att.duration_sec, 1), "at": att.created_at.isoformat(),
+        } for att, title in act_rows],
         "attempts": [{
             "attempt_id": str(a.id),
             "exam_type": a.exam_type.value,
