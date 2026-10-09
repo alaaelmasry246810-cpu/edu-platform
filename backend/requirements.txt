@@ -13,7 +13,6 @@ python-multipart==0.0.9
 
 # AI & RAG
 openai==1.50.0
-qdrant-client==1.11.3
 tiktoken==0.7.0
 
 # Document Processing (OCR handled via OpenAI Vision, no local tesseract/opencv needed)

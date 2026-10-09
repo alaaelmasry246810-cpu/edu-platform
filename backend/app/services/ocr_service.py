@@ -5,8 +5,6 @@ import re
 from pathlib import Path
 from typing import NamedTuple
 
-import fitz  # PyMuPDF
-from PIL import Image
 from openai import AsyncOpenAI
 
 from app.config import settings
@@ -30,6 +28,7 @@ class DocumentParser:
 
     async def parse_pdf(self, file_path: str) -> list[PageText]:
         pages: list[PageText] = []
+        import fitz  # PyMuPDF, loaded on demand
         doc = fitz.open(file_path)
 
         for i, page in enumerate(doc):
@@ -50,6 +49,7 @@ class DocumentParser:
         return pages
 
     async def parse_image(self, file_path: str) -> PageText:
+        from PIL import Image  # loaded on demand (pulls in numpy)
         img = Image.open(file_path)
         buf = io.BytesIO()
         img.save(buf, format="PNG")
@@ -60,6 +60,7 @@ class DocumentParser:
         """Render each page as a PNG, for QR scanning — independent of OCR."""
         if ext == ".pdf":
             images = []
+            import fitz  # PyMuPDF, loaded on demand
             doc = fitz.open(file_path)
             mat = fitz.Matrix(1.5, 1.5)  # lower zoom than OCR's 2x, QR needs less detail
             for page in doc:

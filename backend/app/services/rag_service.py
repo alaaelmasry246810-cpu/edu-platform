@@ -2,45 +2,24 @@
 import uuid
 from typing import Any
 from openai import AsyncOpenAI
-from qdrant_client import AsyncQdrantClient
-from qdrant_client.models import (
-    Distance, VectorParams, PointStruct,
-    Filter, FieldCondition, MatchValue, SearchRequest, PayloadSchemaType
-)
 from app.config import settings
+from app.services import qdrant_rest
 
 client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
 
 # Returned instead of generated text when the curriculum content couldn't be
 # retrieved (e.g. the vector store is down). Callers must never cache it.
 NO_CONTENT_MESSAGE = "لم يتم العثور على محتوى كافٍ في المنهج لهذا الطلب."
-qdrant = (
-    AsyncQdrantClient(url=settings.QDRANT_URL, api_key=settings.QDRANT_API_KEY or None)
-    if settings.QDRANT_URL
-    else AsyncQdrantClient(host=settings.QDRANT_HOST, port=settings.QDRANT_PORT)
-)
 
 
 async def ensure_collection(collection_name: str) -> None:
     """Create Qdrant collection if it doesn't exist."""
-    existing = await qdrant.get_collections()
-    names = [c.name for c in existing.collections]
-    if collection_name not in names:
-        await qdrant.create_collection(
-            collection_name=collection_name,
-            vectors_config=VectorParams(
-                size=settings.EMBEDDING_DIMENSION,
-                distance=Distance.COSINE
-            )
-        )
+    if collection_name not in await qdrant_rest.collection_names():
+        await qdrant_rest.create_collection(collection_name, settings.EMBEDDING_DIMENSION)
         # retrieve_full_scope() filters/scrolls on these metadata fields —
         # Qdrant requires an explicit payload index to filter on a field at all.
         for field in ("curriculum_id", "unit_id", "lesson_id"):
-            await qdrant.create_payload_index(
-                collection_name=collection_name,
-                field_name=field,
-                field_schema=PayloadSchemaType.KEYWORD,
-            )
+            await qdrant_rest.create_keyword_index(collection_name, field)
 
 
 async def embed_text(text: str) -> list[float]:
@@ -59,16 +38,16 @@ async def index_chunks(collection_name: str, chunks: list[dict]) -> int:
     points = []
     for chunk in chunks:
         vector = await embed_text(chunk["text"])
-        points.append(PointStruct(
-            id=str(uuid.uuid4()),
-            vector=vector,
-            payload={
+        points.append({
+            "id": str(uuid.uuid4()),
+            "vector": vector,
+            "payload": {
                 "text": chunk["text"],
                 **chunk.get("metadata", {}),
-            }
-        ))
+            },
+        })
 
-    await qdrant.upsert(collection_name=collection_name, points=points)
+    await qdrant_rest.upsert(collection_name, points)
     return len(points)
 
 
@@ -94,25 +73,13 @@ async def retrieve_full_scope(
     """
     limit = max_chunks or settings.RAG_MAX_GENERATION_CHUNKS
 
-    must_conditions = []
-    if filter_metadata:
-        for key, value in filter_metadata.items():
-            must_conditions.append(FieldCondition(key=key, match=MatchValue(value=value)))
-    scroll_filter = Filter(must=must_conditions) if must_conditions else None
-
     try:
-        points, _ = await qdrant.scroll(
-            collection_name=collection_name,
-            scroll_filter=scroll_filter,
-            limit=limit,
-            with_payload=True,
-            with_vectors=False,
-        )
+        points = await qdrant_rest.scroll(collection_name, qdrant_rest.match_filter(filter_metadata), limit)
     except Exception:
         return []
 
-    points.sort(key=lambda p: (p.payload.get("lesson_id") or "", p.payload.get("chunk_index", 0)))
-    return [p.payload["text"] for p in points]
+    points.sort(key=lambda p: (p["payload"].get("lesson_id") or "", p["payload"].get("chunk_index", 0)))
+    return [p["payload"]["text"] for p in points]
 
 
 async def generate_with_rag(
@@ -258,9 +225,4 @@ async def generate_flashcards(
 
 async def delete_curriculum_vectors(collection_name: str, curriculum_id: str) -> None:
     """Remove all vectors for a curriculum."""
-    await qdrant.delete(
-        collection_name=collection_name,
-        points_selector=Filter(must=[
-            FieldCondition(key="curriculum_id", match=MatchValue(value=curriculum_id))
-        ])
-    )
+    await qdrant_rest.delete(collection_name, qdrant_rest.match_filter({"curriculum_id": curriculum_id}))

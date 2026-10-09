@@ -1,5 +1,4 @@
 """Stripe payment integration — checkout sessions, webhook, coupon application."""
-import stripe
 import hashlib
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Request, Header
@@ -29,6 +28,9 @@ PLAN_DURATIONS = {
 
 
 def _stripe_client():
+    # Imported on first use: the stripe package costs ~35MB of RAM, too much to
+    # load on every start on small free hosts when payments aren't even set up.
+    import stripe
     stripe.api_key = settings.STRIPE_SECRET_KEY
     return stripe
 
@@ -78,7 +80,7 @@ async def create_checkout(
         stripe_coupon_id = f"coupon_{coupon.code}"
         try:
             stripe_client.coupons.retrieve(stripe_coupon_id)
-        except stripe.error.InvalidRequestError:
+        except stripe_client.error.InvalidRequestError:
             stripe_client.coupons.create(
                 id=stripe_coupon_id,
                 percent_off=coupon.discount_percent,
@@ -130,7 +132,7 @@ async def stripe_webhook(
     """Handle Stripe webhook events (checkout.session.completed)."""
     payload = await request.body()
     try:
-        event = stripe.Webhook.construct_event(
+        event = _stripe_client().Webhook.construct_event(
             payload, stripe_signature, settings.STRIPE_WEBHOOK_SECRET
         )
     except Exception:

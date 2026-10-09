@@ -7,8 +7,6 @@ import io
 import logging
 
 import httpx
-import zxingcpp
-from PIL import Image
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +25,9 @@ FETCH_TIMEOUT_S = 15.0
 def detect_qr_urls(img_bytes: bytes) -> list[str]:
     """Return the distinct http(s) URLs encoded in any QR codes found in the image."""
     try:
+        # Loaded on demand: Pillow pulls in numpy, too heavy to load at startup on small hosts.
+        import zxingcpp
+        from PIL import Image
         img = Image.open(io.BytesIO(img_bytes))
         results = zxingcpp.read_barcodes(img)
     except Exception:
