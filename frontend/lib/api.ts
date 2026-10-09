@@ -197,3 +197,33 @@ export const videosAPI = {
 /** Backend-served files (e.g. "/uploads/...") need the API origin in front. */
 export const mediaUrl = (path?: string | null) =>
   !path ? "" : /^https?:\/\//.test(path) ? path : `${API_BASE}${path}`;
+
+// ── Games & activities ────────────────────────────────────────
+export const activitiesAPI = {
+  list:            (lessonId?: string)        => api.get("/activities/", { params: lessonId ? { lesson_id: lessonId } : {} }),
+  library:         (q = "")                   => api.get("/activities/library", { params: { q } }),
+  get:             (id: string)               => api.get(`/activities/${id}`),
+  create:          (data: object)             => api.post("/activities/", data),
+  update:          (id: string, data: object) => api.patch(`/activities/${id}`, data),
+  delete:          (id: string)               => api.delete(`/activities/${id}`),
+  duplicate:       (id: string)               => api.post(`/activities/${id}/duplicate`),
+  generate:        (data: object)             => api.post("/activities/generate", data),
+  fromFlashcards:  (lessonId: string)         => api.get(`/activities/from-flashcards/${lessonId}`),
+  saveAttempt:     (id: string, data: object) => api.post(`/activities/${id}/attempts`, data),
+  report:          (id: string)               => api.get(`/activities/${id}/report`),
+};
+
+export const liveAPI = {
+  create:      (activityId: string, timeLimit?: number) => api.post("/live", { activity_id: activityId, time_limit: timeLimit }),
+  hostState:   (id: string)                    => api.get(`/live/${id}/host`),
+  action:      (id: string, action: string)    => api.post(`/live/${id}/action`, { action }),
+  join:        (pin: string, nickname: string) => api.post("/live/join", { pin, nickname }),
+  playerState: (playerId: string, token: string) => api.get(`/live/player/${playerId}`, { params: { token } }),
+  answer:      (playerId: string, token: string, index: number, choice: number) =>
+    api.post(`/live/player/${playerId}/answer`, { token, index, choice }),
+};
+
+export const studyAPI = {
+  progress: (lessonId: string)                                  => api.get(`/study/${lessonId}`),
+  review:   (lessonId: string, cardIndex: number, known: boolean) => api.post(`/study/${lessonId}/review`, { card_index: cardIndex, known }),
+};

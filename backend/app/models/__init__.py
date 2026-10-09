@@ -9,6 +9,7 @@ from app.models.question_bank import SharedQuestion
 from app.models.coupon import Coupon
 from app.models.deployment import DeploymentServer
 from app.models.interactive_video import InteractiveVideo, VideoSource
+from app.models.activity import Activity, ActivityAttempt, LiveSession, LivePlayer, FlashcardReview
 
 __all__ = [
     # User
@@ -28,4 +29,6 @@ __all__ = [
     "DeploymentServer",
     # Interactive videos
     "InteractiveVideo", "VideoSource",
+    # Games & activities
+    "Activity", "ActivityAttempt", "LiveSession", "LivePlayer", "FlashcardReview",
 ]

@@ -4,6 +4,7 @@ import clsx from "clsx";
 import { mediaUrl } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import SceneVisual, { hasVisual, type VisualType } from "./SceneVisual";
+import LessonTextView, { splitSentences, type TextSentence } from "./LessonTextView";
 
 export interface Scene {
   title: string;
@@ -34,7 +35,12 @@ export interface InteractiveVideoData {
   media_url?: string | null;
   scenes: Scene[];
   interactions: Interaction[];
+  display_mode?: ViewMode;
+  text_track?: { source: "lesson" | "transcript"; sentences: { text: string; start: number; end: number }[] } | null;
 }
+
+export type ViewMode = "visual" | "text" | "both";
+const VIEW_ORDER: ViewMode[] = ["visual", "both", "text"];
 
 type Answers = Record<string, { choice: string; correct: boolean }>;
 
@@ -80,6 +86,7 @@ export default function InteractivePlayer({ video }: { video: InteractiveVideoDa
   const [sceneIdx, setSceneIdx] = useState(0);
   const [finished, setFinished] = useState(false);
   const [captions, setCaptions] = useState(true);
+  const [view, setView] = useState<ViewMode>(video.display_mode ?? "visual");
   const resumeAfterQ = useRef(false);
 
   const isAI = video.source === "ai";
@@ -96,7 +103,8 @@ export default function InteractivePlayer({ video }: { video: InteractiveVideoDa
   useEffect(() => {
     setAnswers({}); setActiveQ(null); setPicked(null); setPlaying(false);
     setCurrent(0); setDuration(0); setSceneIdx(0); setFinished(false);
-  }, [video.id]);
+    setView(video.display_mode ?? "visual");
+  }, [video.id, video.display_mode]);
 
   const media = () => mediaRef.current;
 
@@ -233,6 +241,53 @@ export default function InteractivePlayer({ video }: { video: InteractiveVideoDa
 
   const mediaSrc = isAI ? mediaUrl(scene?.audio_url) : mediaUrl(video.media_url);
 
+  // ── Lesson-text track: which sentence is being spoken right now ──
+  // AI videos: each scene's narration, timed by sentence length across its audio.
+  // Podcasts / uploads: the server-aligned track (lesson sentences or transcript).
+  const aiTrack = useMemo(() => {
+    if (!isAI) return [];
+    const out: { text: string; group: number; a: number; b: number }[] = [];
+    scenes.forEach((sc, i) => {
+      const parts = splitSentences(sc.narration || "");
+      const total = parts.reduce((n, p) => n + p.length, 0) || 1;
+      let acc = 0;
+      parts.forEach((p) => { out.push({ text: p, group: i, a: acc / total, b: (acc + p.length) / total }); acc += p.length; });
+    });
+    return out;
+  }, [isAI, scenes]);
+  const timedTrack = (!isAI && video.text_track?.sentences) || [];
+  const textSentences: TextSentence[] = isAI ? aiTrack : timedTrack.map((x) => ({ text: x.text }));
+  const hasText = textSentences.length > 0;
+  const activeSentence = (() => {
+    if (isAI) {
+      const inScene = aiTrack.map((x, i) => ({ ...x, i })).filter((x) => x.group === sceneIdx);
+      if (!inScene.length) return -1;
+      return (inScene.find((x) => sceneFraction >= x.a && sceneFraction < x.b) ?? inScene[inScene.length - 1]).i;
+    }
+    let idx = -1;
+    timedTrack.forEach((x, i) => { if (x.start <= current + 0.05) idx = i; });
+    return idx;
+  })();
+  const pickSentence = (i: number) => {
+    const m = media();
+    if (isAI) {
+      const x = aiTrack[i];
+      if (!x) return;
+      if (x.group !== sceneIdx) return goToScene(x.group);
+      if (m && duration) { m.currentTime = x.a * duration; play(); }
+    } else if (m && timedTrack[i]) {
+      m.currentTime = timedTrack[i].start;
+      play();
+    }
+  };
+  const effectiveView: ViewMode = hasText ? view : "visual";
+  const cycleView = () => setView((v) => VIEW_ORDER[(VIEW_ORDER.indexOf(v) + 1) % VIEW_ORDER.length]);
+  const viewToggle = hasText && (
+    <button onClick={cycleView} className="text-xs px-2 py-0.5 rounded border border-white/40 hover:bg-white/10 whitespace-nowrap" title={t("video.player.viewToggle")}>
+      {t(`video.player.views.${effectiveView}`)}
+    </button>
+  );
+
   return (
     <div ref={containerRef} className="relative w-full rounded-2xl overflow-hidden shadow-lg bg-slate-900 text-white select-none">
       {/* ── Stage ── */}
@@ -262,7 +317,20 @@ export default function InteractivePlayer({ video }: { video: InteractiveVideoDa
               onPause={() => setPlaying(false)}
               onEnded={onEnded}
             />
-            {scene ? (
+            {effectiveView === "text" ? (
+              <div className={clsx("absolute inset-0 bg-gradient-to-br", SCENE_GRADIENTS[sceneIdx % SCENE_GRADIENTS.length])}>
+                <div className="absolute inset-0 bg-slate-950/55" />
+                <div className="relative h-full">
+                  <LessonTextView
+                    sentences={textSentences}
+                    active={activeSentence}
+                    groupTitles={isAI ? scenes.map((sc) => sc.title) : undefined}
+                    variant="full"
+                    onPick={pickSentence}
+                  />
+                </div>
+              </div>
+            ) : scene ? (
               <div
                 key={sceneIdx}
                 className={clsx(
@@ -272,7 +340,7 @@ export default function InteractivePlayer({ video }: { video: InteractiveVideoDa
               >
                 {hasVisual(scene.visual_type, scene.visual_data) ? (
                   /* Subject visual (equation / organ diagram / process / image) + the points beside it */
-                  <div className="absolute inset-0 flex flex-col px-[4%] pt-[3%] pb-[9%]">
+                  <div className={clsx("absolute inset-0 flex flex-col px-[4%] pt-[3%]", effectiveView === "both" ? "pb-[17%]" : "pb-[9%]")}>
                     <div className="flex items-baseline gap-3 mb-2">
                       <span className="text-[clamp(1.2rem,3vw,2rem)]">{scene.visual || "📘"}</span>
                       <h2 className="text-[clamp(.95rem,2.8vw,1.9rem)] font-bold leading-tight flex-1">{scene.title}</h2>
@@ -316,7 +384,12 @@ export default function InteractivePlayer({ video }: { video: InteractiveVideoDa
                 </ul>
                   </>
                 )}
-                {isAI && captions && scene.narration && (
+                {effectiveView === "both" && (
+                  <div className="absolute bottom-2 inset-x-3">
+                    <LessonTextView sentences={textSentences} active={activeSentence} variant="strip" />
+                  </div>
+                )}
+                {effectiveView === "visual" && isAI && captions && scene.narration && (
                   <div className="absolute bottom-3 inset-x-4 text-center">
                     <span className="inline-block bg-black/55 rounded-lg px-3 py-1.5 text-[clamp(.7rem,1.7vw,1rem)] leading-relaxed line-clamp-2">
                       {scene.narration}
@@ -327,10 +400,15 @@ export default function InteractivePlayer({ video }: { video: InteractiveVideoDa
             ) : (
               <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-slate-700 to-slate-900">
                 <span className="text-7xl">🎙️</span>
+                {effectiveView === "both" && (
+                  <div className="absolute bottom-2 inset-x-3">
+                    <LessonTextView sentences={textSentences} active={activeSentence} variant="strip" />
+                  </div>
+                )}
               </div>
             )}
 
-            {!playing && !activeQ && !finished && (
+            {!playing && !activeQ && !finished && effectiveView !== "text" && (
               <button
                 onClick={play}
                 className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full bg-white/90 hover:bg-white text-slate-900 flex items-center justify-center text-2xl shadow-xl"
@@ -439,15 +517,26 @@ export default function InteractivePlayer({ video }: { video: InteractiveVideoDa
           {isAI && (
             <button onClick={() => setCaptions((c) => !c)} className={clsx("text-xs px-1.5 rounded border", captions ? "border-white/70" : "border-white/25 opacity-60")}>CC</button>
           )}
+          {viewToggle}
           <button onClick={toggleFullscreen} className="opacity-80 hover:opacity-100" aria-label={t("video.player.fullscreen")}>⛶</button>
         </div>
       )}
 
+      {/* Uploaded video: lesson text under the video, spoken sentence lit up */}
+      {isUpload && effectiveView !== "visual" && (
+        <div className={clsx("bg-slate-900 border-t border-white/10", effectiveView === "text" ? "h-56 sm:h-64" : "px-3 py-2")}>
+          <LessonTextView sentences={textSentences} active={activeSentence} variant={effectiveView === "text" ? "full" : "strip"} onPick={pickSentence} />
+        </div>
+      )}
+
       {/* Question markers under native video controls */}
-      {isUpload && total > 0 && (
+      {isUpload && (total > 0 || hasText) && (
         <div className="px-3 py-2 bg-slate-950 flex items-center gap-2 text-xs">
-          <span className="opacity-70">{t("video.player.questionsInVideo", { n: total })}</span>
-          <span className="ms-auto">✅ {correctCount}/{total}</span>
+          {total > 0 && <span className="opacity-70">{t("video.player.questionsInVideo", { n: total })}</span>}
+          <span className="ms-auto flex items-center gap-2">
+            {viewToggle}
+            {total > 0 && <span>✅ {correctCount}/{total}</span>}
+          </span>
         </div>
       )}
     </div>

@@ -1,5 +1,14 @@
 // Service Worker for منصة المناهج الذكية PWA
-const CACHE_NAME = "edu-platform-v1";
+const CACHE_NAME = "edu-platform-v2";
+const DATA_CACHE = "edu-platform-data-v1";
+
+// API reads that should keep working offline once opened (Quizlet-style
+// offline study): an activity, a lesson's flashcards, flashcard progress.
+const OFFLINE_API = [
+  /\/activities\/[0-9a-f-]{36}$/,
+  /\/ai\/lesson\/[0-9a-f-]{36}\/flashcards$/,
+  /\/study\/[0-9a-f-]{36}$/,
+];
 const OFFLINE_URL = "/offline";
 
 // Assets to pre-cache
@@ -27,7 +36,7 @@ self.addEventListener("activate", (event) => {
     caches.keys().then((keys) =>
       Promise.all(
         keys
-          .filter((k) => k !== CACHE_NAME)
+          .filter((k) => k !== CACHE_NAME && k !== DATA_CACHE)
           .map((k) => caches.delete(k))
       )
     )
@@ -45,6 +54,22 @@ self.addEventListener("fetch", (event) => {
 
   // Skip non-GET and API requests
   if (request.method !== "GET") return;
+
+  // Offline-capable API reads — network first, cached copy when offline.
+  if (request.mode !== "navigate" && OFFLINE_API.some((re) => re.test(url.pathname))) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response.ok) {
+            const clone = response.clone();
+            caches.open(DATA_CACHE).then((cache) => cache.put(request.url, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(request.url, { cacheName: DATA_CACHE }).then((cached) => cached || Response.error()))
+    );
+    return;
+  }
   if (url.pathname.startsWith("/api/") || url.port === "8000") return;
 
   // Navigation (HTML pages) — network first, offline fallback

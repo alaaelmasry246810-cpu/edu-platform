@@ -35,6 +35,7 @@ export default function VideoStudio({ curriculumId, lessonId, lessonTitle, unitI
   const [voice, setVoice] = useState("nova");
   const [sceneCount, setSceneCount] = useState(6);
   const [scriptMode, setScriptMode] = useState<"lesson_text" | "explain">("lesson_text");
+  const [displayMode, setDisplayMode] = useState<"visual" | "text" | "both">("both");
   const [sourceText, setSourceText] = useState("");
 
   // Podcast
@@ -103,11 +104,13 @@ export default function VideoStudio({ curriculumId, lessonId, lessonTitle, unitI
     try {
       let data;
       if (method === "ai") {
-        ({ data } = await videosAPI.createAI({ ...scopeFields(), title: title || undefined, voice, scene_count: sceneCount, script_mode: scriptMode, source_text: sourceText.trim() || undefined }));
+        ({ data } = await videosAPI.createAI({ ...scopeFields(), title: title || undefined, voice, scene_count: sceneCount, script_mode: scriptMode, source_text: sourceText.trim() || undefined, display_mode: displayMode }));
       } else {
         const form = new FormData();
         Object.entries(scopeFields()).forEach(([k, v]) => form.append(k, v));
         form.append("title", title);
+        form.append("display_mode", displayMode);
+        if (sourceText.trim()) form.append("source_text", sourceText.trim());
         if (method === "podcast") {
           if (!audioBlob) { toast.error(t("video.studio.needAudio")); return; }
           const ext = audioBlob.type.includes("mp4") ? "m4a" : audioBlob.type.includes("ogg") ? "ogg" : audioBlob.type.includes("mpeg") ? "mp3" : "webm";
@@ -184,6 +187,35 @@ export default function VideoStudio({ curriculumId, lessonId, lessonTitle, unitI
 
       <div className="space-y-3">
         <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t("video.studio.titlePlaceholder")} className={inputCls} />
+
+        {/* What the student sees: scenes, the lesson text with the spoken sentence lit up, or both */}
+        <div className="space-y-2">
+          <p className="text-sm text-slate-600 dark:text-slate-300">{t("video.studio.displayMode")}</p>
+          <div className="grid grid-cols-3 gap-2">
+            {(["visual", "both", "text"] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => setDisplayMode(m)}
+                className={clsx(
+                  "text-start rounded-xl border-2 px-3 py-2",
+                  displayMode === m ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20" : "border-slate-200 dark:border-slate-700",
+                )}
+              >
+                <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t(`video.studio.displayModes.${m}.name`)}</div>
+                <div className="text-[11px] text-slate-500 hidden sm:block">{t(`video.studio.displayModes.${m}.desc`)}</div>
+              </button>
+            ))}
+          </div>
+          {method !== "ai" && displayMode !== "visual" && (
+            <textarea
+              value={sourceText}
+              onChange={(e) => setSourceText(e.target.value)}
+              rows={3}
+              placeholder={t("video.studio.alignTextPlaceholder")}
+              className={inputCls}
+            />
+          )}
+        </div>
 
         {method === "ai" && (
           <div className="grid sm:grid-cols-2 gap-3">

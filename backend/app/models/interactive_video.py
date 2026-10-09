@@ -49,6 +49,10 @@ class InteractiveVideo(Base):
     voice: Mapped[str | None] = mapped_column(String(50), nullable=True)            # TTS voice (AI videos)
     script_mode: Mapped[str | None] = mapped_column(String(20), nullable=True)      # lesson_text | explain (AI videos)
     source_text: Mapped[str | None] = mapped_column(Text, nullable=True)            # teacher-pasted text to script from
+    # visual | text | both — "text" shows the lesson text with the spoken sentence lit up
+    display_mode: Mapped[str | None] = mapped_column(String(10), nullable=True, default="visual")
+    # {"source": "lesson"|"transcript", "sentences": [{text, start, end}]} — see text_track service
+    text_track: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     media_url: Mapped[str | None] = mapped_column(String(2000), nullable=True)      # podcast audio / uploaded video
     media_path: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     transcript: Mapped[list | None] = mapped_column(JSON, nullable=True)            # [{start, end, text}]

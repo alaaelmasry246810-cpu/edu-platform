@@ -26,6 +26,16 @@ const config: Config = {
         }
       },
       keyframes: {
+        shake: {
+          "0%, 100%": { transform: "translateX(0)" },
+          "25%": { transform: "translateX(-5px)" },
+          "75%": { transform: "translateX(5px)" },
+        },
+        pop: {
+          "0%": { transform: "scale(.6)", opacity: "0" },
+          "70%": { transform: "scale(1.08)", opacity: "1" },
+          "100%": { transform: "scale(1)" },
+        },
         sceneIn: {
           from: { opacity: "0", transform: "scale(1.02)" },
           to: { opacity: "1", transform: "scale(1)" },
@@ -33,6 +43,8 @@ const config: Config = {
       },
       animation: {
         "scene-in": "sceneIn .5s ease",
+        shake: "shake .3s ease-in-out",
+        pop: "pop .45s ease-out",
       },
     },
   },

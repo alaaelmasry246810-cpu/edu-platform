@@ -28,7 +28,8 @@
     "servers": "Deployment Servers",
     "myAssignments": "My Assignments",
     "myGroups": "My Groups",
-    "assignments": "Assignments"
+    "assignments": "Assignments",
+    "games": "Games & activities"
   },
   "roles": {
     "teacher": "Teacher",

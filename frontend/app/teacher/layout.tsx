@@ -18,6 +18,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
     { href: "/teacher/students",     label: t("nav.myStudents"),        icon: "👥" },
     { href: "/teacher/groups",       label: t("nav.myGroups"),          icon: "🧑‍🤝‍🧑" },
     { href: "/teacher/assignments",  label: t("nav.assignments"),       icon: "📝" },
+    { href: "/teacher/activities",   label: t("nav.games"),             icon: "🎮" },
     { href: "/teacher/pending",      label: t("nav.needsReview"),       icon: "📋" },
     { href: "/teacher/curricula",    label: t("nav.manageMyCurricula"), icon: "📚" },
     { href: "/teacher/question-bank", label: t("nav.questionBank"),     icon: "🗂️" },

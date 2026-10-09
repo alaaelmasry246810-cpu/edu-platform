@@ -1,6 +1,7 @@
 "use client";
 import { useId, useState } from "react";
 import clsx from "clsx";
+import { Graph, Chart, Timeline, MapVisual, Comparison, Sentence, Definition } from "./visualsExtra";
 
 /**
  * Subject-aware visuals for an interactive-video scene. `p` is how far the
@@ -8,7 +9,9 @@ import clsx from "clsx";
  * with it, so the screen shows what the teacher is talking about right now.
  */
 
-export type VisualType = "bullets" | "equation" | "formula" | "diagram" | "process" | "image";
+export type VisualType =
+  | "bullets" | "equation" | "formula" | "diagram" | "process" | "image"
+  | "graph" | "chart" | "timeline" | "map" | "comparison" | "sentence" | "definition";
 
 interface Species { formula: string; name?: string }
 
@@ -242,6 +245,13 @@ export default function SceneVisual({ type, data, p }: { type?: VisualType; data
       {type === "diagram" && <Diagram d={data} p={progress} />}
       {type === "process" && <Process d={data} p={progress} />}
       {type === "image" && <ImageVisual d={data} p={progress} />}
+      {type === "graph" && <Graph d={data} p={progress} />}
+      {type === "chart" && <Chart d={data} p={progress} />}
+      {type === "timeline" && <Timeline d={data} p={progress} />}
+      {type === "map" && <MapVisual d={data} p={progress} />}
+      {type === "comparison" && <Comparison d={data} p={progress} />}
+      {type === "sentence" && <Sentence d={data} p={progress} />}
+      {type === "definition" && <Definition d={data} p={progress} />}
     </>
   );
 }

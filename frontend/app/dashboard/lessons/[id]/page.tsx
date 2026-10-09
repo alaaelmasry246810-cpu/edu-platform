@@ -4,13 +4,14 @@ import { useParams } from "next/navigation";
 import { curriculumAPI, aiAPI } from "@/lib/api";
 import toast from "react-hot-toast";
 import clsx from "clsx";
-import FlashcardDeck from "@/components/lesson/FlashcardDeck";
+import FlashcardStudy from "@/components/lesson/FlashcardStudy";
+import LessonActivities from "@/components/activities/LessonActivities";
 import VideoPlayer from "@/components/lesson/VideoPlayer";
 import LessonVideos from "@/components/video/LessonVideos";
 import { useI18n } from "@/lib/i18n";
 import { useAuthStore } from "@/lib/store";
 
-type Tab = "explanation" | "summary" | "key-terms" | "questions" | "flashcards" | "video";
+type Tab = "explanation" | "summary" | "key-terms" | "questions" | "flashcards" | "video" | "games";
 
 export default function LessonsPage() {
   const { id } = useParams<{ id: string }>();
@@ -81,7 +82,7 @@ export default function LessonsPage() {
       } else if (tab === "flashcards") {
         const { data } = await aiAPI.flashcards(activeLesson.id);
         setFlashcards(data.flashcards ?? []);
-      } else if (tab === "video") {
+      } else if (tab === "video" || tab === "games") {
         // Video data comes from structure, nothing to fetch
       }
     } catch (err: any) {
@@ -124,6 +125,7 @@ export default function LessonsPage() {
         { key: "key-terms", label: t("dashboard.lessons.tabs.keyTerms"), icon: "🔑" },
         { key: "flashcards", label: t("dashboard.lessons.tabs.flashcards"), icon: "🃏", badge: t("dashboard.lessons.newBadge") },
         { key: "video", label: t("dashboard.lessons.tabs.video"), icon: "🎬" },
+        { key: "games", label: t("games.lessonTab"), icon: "🎮" },
         { key: "questions", label: t("dashboard.lessons.tabs.questions"), icon: "❓" },
       ];
 
@@ -224,7 +226,7 @@ export default function LessonsPage() {
 
             {/* Tab content */}
             <div className="p-6 flex-1 overflow-y-auto">
-              {loading && activeTab !== "video" ? (
+              {loading && activeTab !== "video" && activeTab !== "games" ? (
                 <div className="flex flex-col items-center gap-4 py-16 text-slate-500">
                   <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
                   <p className="text-sm">
@@ -260,7 +262,8 @@ export default function LessonsPage() {
                 </div>
               ) : activeTab === "flashcards" ? (
                 flashcards.length > 0 ? (
-                  <FlashcardDeck
+                  <FlashcardStudy
+                    lessonId={activeLesson.id}
                     cards={flashcards}
                     onReset={canManage ? handleResetFlashcards : undefined}
                     resetting={resettingCards}
@@ -271,6 +274,8 @@ export default function LessonsPage() {
                     <p>{t("dashboard.lessons.noFlashcards")}</p>
                   </div>
                 ) : null
+              ) : activeTab === "games" ? (
+                <LessonActivities curriculumId={id} lessonId={activeLesson.id} canManage={canManage} />
               ) : activeTab === "video" ? (
                 <>
                 <LessonVideos

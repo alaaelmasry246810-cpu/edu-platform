@@ -12,7 +12,13 @@
     "prev": "Previous scene",
     "next": "Next scene",
     "fullscreen": "Fullscreen",
-    "questionsInVideo": "This video has {n} interactive questions — they pop up as you watch"
+    "questionsInVideo": "This video has {n} interactive questions — they pop up as you watch",
+    "viewToggle": "View",
+    "views": {
+      "visual": "🎬 Scenes",
+      "both": "🎬+📖",
+      "text": "📖 Text"
+    }
   },
   "studio": {
     "title": "New interactive video",
@@ -36,7 +42,7 @@
     "titlePlaceholder": "Video title (optional)",
     "voice": "Narrator voice",
     "sceneCount": "Scenes: {n}",
-    "aiHint": "Each scene shows what it explains: chemical equations with the reaction animated, organs and body systems drawn with each part lighting up as the narrator reaches it, plus process steps, formulas and real images. Everything is editable afterwards.",
+    "aiHint": "Each scene shows what it explains, in any subject: animated equations and reactions, organs lighting up part by part, function graphs, timelines and maps for history and geography, sentence parsing for languages, comparisons, definitions, charts and real images. Everything is editable afterwards.",
     "record": "Start recording",
     "reRecord": "Record again",
     "stop": "Stop",
@@ -68,7 +74,23 @@
         "desc": "Teacher-style explanation with an intro and summary"
       }
     },
-    "sourceTextPlaceholder": "Optional: paste the lesson text to script from exactly (left empty, the uploaded curriculum's lesson text is used)"
+    "sourceTextPlaceholder": "Optional: paste the lesson text to script from exactly (left empty, the uploaded curriculum's lesson text is used)",
+    "displayMode": "What students see",
+    "displayModes": {
+      "visual": {
+        "name": "🎬 Visual scenes",
+        "desc": "Equations, diagrams, maps… per subject"
+      },
+      "both": {
+        "name": "🎬+📖 Both",
+        "desc": "Scenes with the spoken sentence lit up below"
+      },
+      "text": {
+        "name": "📖 Lesson text",
+        "desc": "The lesson text itself, the spoken sentence lit up"
+      }
+    },
+    "alignTextPlaceholder": "Optional: paste the lesson text so it's shown with the sentence you're saying lit up (empty: taken from the uploaded curriculum, or your own words are shown if none)"
   },
   "voices": {
     "nova": "Nova (female)",
@@ -136,6 +158,13 @@
     "formula": "📐 Formula",
     "diagram": "🫀 Diagram",
     "process": "🔁 Steps / pathway",
-    "image": "🖼️ Image"
+    "image": "🖼️ Image",
+    "graph": "📈 Function graph",
+    "chart": "📊 Chart",
+    "timeline": "🕰️ Timeline",
+    "map": "🗺️ Map",
+    "comparison": "⚖️ Comparison",
+    "sentence": "✍️ Sentence / grammar",
+    "definition": "🔑 Definition"
   }
 }

@@ -91,6 +91,17 @@ export default function VideoEditor({ video, onChange, onDeleted }: Props) {
     <div className="border border-slate-200 dark:border-slate-700 rounded-2xl p-4 bg-slate-50 dark:bg-slate-800/40 space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <input value={title} onChange={(e) => setTitle(e.target.value)} className={inputCls + " flex-1 min-w-[12rem]"} />
+        <select
+          value={video.display_mode ?? "visual"}
+          onChange={(e) => run(() => videosAPI.update(video.id, { display_mode: e.target.value }), t("video.editor.saved"))}
+          disabled={saving}
+          className={inputCls + " w-auto"}
+          title={t("video.studio.displayMode")}
+        >
+          {(["visual", "both", "text"] as const).map((m) => (
+            <option key={m} value={m}>{t(`video.studio.displayModes.${m}.name`)}</option>
+          ))}
+        </select>
         <button onClick={togglePublish} disabled={saving || !ready}
           className={video.is_published
             ? "px-3 py-1.5 rounded-lg text-sm border border-green-500 text-green-600"

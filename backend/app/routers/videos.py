@@ -16,7 +16,7 @@ from app.middleware.auth import get_current_user, check_quota
 from app.models.user import User, UserRole
 from app.models.curriculum import Curriculum, Unit, Lesson, ProcessingStatus
 from app.models.interactive_video import InteractiveVideo, VideoSource
-from app.services import video_service
+from app.services import video_service, text_track, lesson_content
 
 router = APIRouter(prefix="/videos", tags=["Interactive Videos"])
 
@@ -56,6 +56,8 @@ def _serialize(v: InteractiveVideo) -> dict:
         "interactions": v.interactions or [],
         "has_transcript": bool(v.transcript),
         "is_published": v.is_published,
+        "display_mode": v.display_mode or "visual",
+        "text_track": v.text_track,
         "created_at": v.created_at.isoformat() if v.created_at else None,
     }
 
@@ -107,35 +109,12 @@ async def _save_upload(file: UploadFile, dest: Path, max_mb: int) -> None:
             await out.write(chunk)
 
 
-def _content_filter(video: InteractiveVideo) -> dict:
-    return {"lesson_id": str(video.lesson_id)} if video.lesson_id else {"unit_id": str(video.unit_id)}
-
-
-_MAX_CONTENT_CHARS = 60_000
+async def _lesson_text(video: InteractiveVideo, curriculum: Curriculum, db: AsyncSession) -> str:
+    return await lesson_content.lesson_text(db, curriculum, video.lesson_id, video.unit_id, video.source_text)
 
 
 async def _video_content(video: InteractiveVideo, curriculum: Curriculum, db: AsyncSession) -> str:
-    """The lesson/unit text the script is built from, best source first:
-    text the teacher pasted → the lesson's own extracted text → its RAG chunks
-    → the lessons' cached AI explanation/summary (when the vector store is down)."""
-    if video.source_text and video.source_text.strip():
-        return video.source_text.strip()[:_MAX_CONTENT_CHARS]
-    if video.lesson_id:
-        q = select(Lesson).where(Lesson.id == video.lesson_id)
-    else:
-        q = select(Lesson).where(Lesson.unit_id == video.unit_id).order_by(Lesson.order)
-    lessons = (await db.execute(q)).scalars().all()
-
-    def joined(attr) -> str:
-        return "\n\n".join(f"## {l.title}\n{attr(l)}" for l in lessons if attr(l))[:_MAX_CONTENT_CHARS]
-
-    content = joined(lambda l: l.content_text)
-    if content:
-        return content
-    content = await video_service.scope_content(curriculum.vector_collection_id, _content_filter(video))
-    if content:
-        return content[:_MAX_CONTENT_CHARS]
-    return joined(lambda l: l.explanation or l.summary)
+    return await lesson_content.generation_text(db, curriculum, video.lesson_id, video.unit_id, video.source_text)
 
 
 # ── Listing ──────────────────────────────────────────────────
@@ -195,6 +174,16 @@ class AIVideoRequest(BaseModel):
     script_mode: str = "lesson_text"
     # Optional text the teacher pastes to script from instead of the stored lesson text
     source_text: str | None = None
+    # What the player shows: "visual" scenes, the lesson "text" with the spoken
+    # sentence highlighted, or "both"
+    display_mode: str = "visual"
+
+
+DISPLAY_MODES = {"visual", "text", "both"}
+
+
+def _display_mode(value: str | None) -> str:
+    return value if value in DISPLAY_MODES else "visual"
 
 
 @router.post("/ai", status_code=202)
@@ -218,6 +207,7 @@ async def create_ai_video(
         voice=body.voice if body.voice in video_service.TTS_VOICES else "nova",
         script_mode=body.script_mode if body.script_mode in video_service.SCRIPT_MODES else "lesson_text",
         source_text=(body.source_text or "").strip() or None,
+        display_mode=_display_mode(body.display_mode),
     )
     db.add(video)
     await db.commit()
@@ -277,12 +267,15 @@ async def create_podcast_video(
     lesson_id: uuid.UUID | None = Form(None),
     unit_id: uuid.UUID | None = Form(None),
     title: str = Form(""),
+    display_mode: str = Form("both"),
+    source_text: str = Form(""),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     return await _create_media_video(
         VideoSource.PODCAST, _AUDIO_EXT, True,
         background_tasks, file, curriculum_id, lesson_id, unit_id, title, current_user, db,
+        display_mode=display_mode, source_text=source_text,
     )
 
 
@@ -295,12 +288,15 @@ async def create_uploaded_video(
     unit_id: uuid.UUID | None = Form(None),
     title: str = Form(""),
     auto_interactions: bool = Form(True),
+    display_mode: str = Form("visual"),
+    source_text: str = Form(""),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     return await _create_media_video(
         VideoSource.UPLOAD, _VIDEO_EXT, auto_interactions,
         background_tasks, file, curriculum_id, lesson_id, unit_id, title, current_user, db,
+        display_mode=display_mode, source_text=source_text,
     )
 
 
@@ -309,9 +305,13 @@ async def _create_media_video(
     background_tasks: BackgroundTasks, file: UploadFile,
     curriculum_id: uuid.UUID, lesson_id: uuid.UUID | None, unit_id: uuid.UUID | None, title: str,
     current_user: User, db: AsyncSession,
+    display_mode: str = "visual", source_text: str = "",
 ):
     _require_teacher(current_user)
     curriculum, unit, lesson = await _resolve_scope(curriculum_id, unit_id, lesson_id, current_user, db)
+    # The lesson-text view needs a transcript to time the sentences.
+    if display_mode in ("text", "both"):
+        process = True
     ext = Path(file.filename or "").suffix.lower() or (".webm" if source == VideoSource.PODCAST else "")
     if ext not in allowed_ext:
         raise HTTPException(status_code=400, detail=f"Unsupported file type: {ext}")
@@ -328,6 +328,8 @@ async def _create_media_video(
         status=ProcessingStatus.PENDING if process else ProcessingStatus.COMPLETED,
         interactions=[],
         scenes=[],
+        display_mode=_display_mode(display_mode),
+        source_text=source_text.strip() or None,
     )
     db.add(video)
     await db.flush()
@@ -354,12 +356,14 @@ async def _process_media_video(video_id: str):
             video.status = ProcessingStatus.PROCESSING
             await db.commit()
 
-            content = await _video_content(video, curriculum, db)
+            lesson_text = await _lesson_text(video, curriculum, db)
+            content = lesson_text or await _video_content(video, curriculum, db)
             segments = await video_service.transcribe(Path(video.media_path))
             is_podcast = video.source == VideoSource.PODCAST
 
             if segments:
                 video.transcript = segments
+                video.text_track = text_track.build_text_track(lesson_text, segments)
                 script = await video_service.build_timed_script(segments, content, video.title, with_scenes=is_podcast)
                 video.scenes = script["scenes"]
                 video.interactions = script["interactions"]
@@ -383,6 +387,7 @@ class VideoUpdate(BaseModel):
     scenes: list[dict] | None = None
     interactions: list[dict] | None = None
     voice: str | None = None
+    display_mode: str | None = None
 
 
 @router.patch("/{video_id}")
@@ -398,6 +403,8 @@ async def update_video(
         video.title = body.title.strip()
     if body.voice in video_service.TTS_VOICES:
         video.voice = body.voice
+    if body.display_mode in DISPLAY_MODES:
+        video.display_mode = body.display_mode
     if body.scenes is not None:
         old = {i: s.get("audio_url") for i, s in enumerate(video.scenes or [])}
         timed = video.source == VideoSource.PODCAST

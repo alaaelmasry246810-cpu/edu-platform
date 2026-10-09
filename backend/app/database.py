@@ -37,3 +37,7 @@ async def init_db():
         await conn.execute(text("ALTER TABLE lessons ADD COLUMN IF NOT EXISTS content_text TEXT"))
         await conn.execute(text("ALTER TABLE interactive_videos ADD COLUMN IF NOT EXISTS script_mode VARCHAR(20)"))
         await conn.execute(text("ALTER TABLE interactive_videos ADD COLUMN IF NOT EXISTS source_text TEXT"))
+        await conn.execute(text("ALTER TABLE interactive_videos ADD COLUMN IF NOT EXISTS display_mode VARCHAR(10)"))
+        await conn.execute(text("ALTER TABLE interactive_videos ADD COLUMN IF NOT EXISTS text_track JSON"))
+        await conn.execute(text("ALTER TABLE activities ADD COLUMN IF NOT EXISTS calm_mode BOOLEAN DEFAULT FALSE"))
+        await conn.execute(text("ALTER TABLE activities ADD COLUMN IF NOT EXISTS game_minutes INTEGER"))

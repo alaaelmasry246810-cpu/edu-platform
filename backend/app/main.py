@@ -6,7 +6,7 @@ import os
 
 from app.config import settings
 from app.database import init_db
-from app.routers import auth, curriculum, ai, admin, teacher, notifications, export, question_bank, payments, coupons, schedule, assignments, videos
+from app.routers import auth, curriculum, ai, admin, teacher, notifications, export, question_bank, payments, coupons, schedule, assignments, videos, activities, live
 
 
 @asynccontextmanager
@@ -50,6 +50,9 @@ app.include_router(coupons.router)
 app.include_router(schedule.router)
 app.include_router(assignments.router)
 app.include_router(videos.router)
+app.include_router(activities.router)
+app.include_router(activities.study_router)
+app.include_router(live.router)
 
 # Serve uploaded files (in production, use nginx/CDN instead)
 if os.path.exists(settings.UPLOAD_DIR):
