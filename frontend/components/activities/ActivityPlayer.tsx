@@ -9,7 +9,7 @@ import QuizGame from "./templates/QuizGame";
 import CrosswordGame from "./templates/CrosswordGame";
 import { TrueFalseGame, MatchGame, FlashcardsGame, AnagramGame, SpellItGame } from "./templates/SimpleGames";
 import { GoldQuestGame, WheelGame, TeamBoardGame } from "./templates/ClassGames";
-import { WhackGame, TowerGame } from "./templates/ArcadeGames";
+import { TowerGame } from "./templates/ArcadeGames";
 
 interface Props {
   activity: { id: string; title: string; items: Item[]; template: string; power_ups?: boolean; time_per_question?: number; calm_mode?: boolean; game_minutes?: number | null };
@@ -95,7 +95,6 @@ export default function ActivityPlayer({ activity, saveAttempts, classroom }: Pr
             {template === "spellit" && <SpellItGame {...props} />}
             {template === "crossword" && <CrosswordGame {...props} />}
             {template === "goldquest" && <GoldQuestGame {...props} />}
-            {template === "whack" && <WhackGame {...props} />}
             {template === "tower" && <TowerGame {...props} />}
             {template === "wheel" && <WheelGame {...props} />}
             {template === "teamboard" && <TeamBoardGame items={activity.items} />}

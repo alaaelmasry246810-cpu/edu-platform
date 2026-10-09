@@ -32,7 +32,6 @@
     "spellit": "Spell it",
     "goldquest": "Gold quest",
     "teamboard": "Team board",
-    "whack": "Whack-a-mole",
     "tower": "Build the tower"
   },
   "result": {
@@ -72,18 +71,16 @@
   "board": {
     "intro": "A whole-class game on one screen: split the class into teams; on its turn each team picks a tile and scores if it answers right. Watch out for surprise tiles!",
     "teams": "Teams",
-    "powers": "Surprise tiles (bomb, swap, double, gift, steal)",
+    "powers": "Surprise tiles (gift, double, swap)",
     "start": "Start game",
     "team": "Team {n}",
     "worth": "{n} points",
     "correct": "Correct",
     "wrong": "Wrong",
     "winner": "Winner: {team} 🎉",
-    "bomb": "💥 Bomb! {team} lost all points",
     "gift": "🎁 Gift! {team} gets 15 points",
     "double": "✨ {team}'s points doubled!",
-    "swap": "🔄 {team} swapped points with {other}",
-    "steal": "🦹 {team} stole {n} points from {other}"
+    "swap": "🔄 {team} swapped points with {other}"
   },
   "study": {
     "browse": "Browse",
@@ -165,7 +162,7 @@
     "calmHint": "No sounds, memes or animations — just focus",
     "gameMinutes": "Game time limit: {n} min",
     "noLimit": "No game time limit",
-    "gameMinutesHint": "Game modes (gold quest, tower, whack-a-mole) end automatically when time runs out, so play never crowds out learning"
+    "gameMinutesHint": "Game modes (gold quest, tower) end automatically when time runs out, so play never crowds out learning"
   },
   "report": {
     "empty": "Nobody has played this yet",
@@ -206,7 +203,10 @@
     "wrong": "Wrong",
     "youreRank": "You're #{n}",
     "yourRank": "You placed {n} of {total}",
-    "leave": "Leave"
+    "leave": "Leave",
+    "kick": "Click a name to remove that player",
+    "kickConfirm": "Remove “{name}” from the game?",
+    "removed": "The teacher removed you from the game"
   },
   "student": {
     "title": "Games & activities",
@@ -231,9 +231,6 @@
     "date": "Date",
     "score": "Score",
     "matchHowTo": "Write the letter of the matching answer next to each question"
-  },
-  "whack": {
-    "howTo": "Whack the mole holding the right answer — fast!"
   },
   "tower": {
     "height": "Tower height: {n} / {goal}"

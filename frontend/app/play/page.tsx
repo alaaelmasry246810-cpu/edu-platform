@@ -45,7 +45,7 @@ export default function Play() {
         lastStatus.current = data.status; lastIndex.current = data.index;
         setS(data);
       })
-      .catch((err) => { if (err.response?.status === 404) leave(); });
+      .catch((err) => { if (err.response?.status === 404) { leave(); setError(t("games.live.removed")); } });
     tick();
     const iv = setInterval(tick, 1000);
     return () => { alive = false; clearInterval(iv); };

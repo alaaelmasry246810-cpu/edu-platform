@@ -27,6 +27,15 @@ _MAX_CUSTOM_PER_TYPE = 30
 _MAX_CUSTOM_TOTAL = 60
 
 
+def _require_content(result: str) -> str:
+    """Don't cache (or charge quota for) the "no content found" fallback — it's
+    usually a temporary retrieval failure, and caching it would stick the
+    lesson with that message forever."""
+    if result == rag_service.NO_CONTENT_MESSAGE:
+        raise HTTPException(status_code=503, detail=f"{result} حاول تاني بعد شوية.")
+    return result
+
+
 def _get_collection(curriculum: Curriculum) -> str:
     return curriculum.vector_collection_id or f"curr_{curriculum.id.hex[:12]}"
 
@@ -50,7 +59,7 @@ async def get_explanation(
         filter_metadata={"lesson_id": str(lesson_id)},
         system_extra="نسّق الشرح بنقاط واضحة."
     )
-    lesson.explanation = result
+    lesson.explanation = _require_content(result)
     await db.commit()
     return {"explanation": result, "cached": False}
 
@@ -71,7 +80,7 @@ async def get_summary(
         f"لخّص الدرس '{lesson.title}' في نقاط مختصرة وشاملة للمراجعة السريعة.",
         filter_metadata={"lesson_id": str(lesson_id)},
     )
-    lesson.summary = result
+    lesson.summary = _require_content(result)
     lesson.has_summary = True
     current_user.summaries_generated_this_month += 1
     await db.commit()
@@ -98,6 +107,7 @@ async def get_key_terms(
 أعدها بصيغة JSON: {{"term": "definition", ...}}""",
         filter_metadata={"lesson_id": str(lesson_id)},
     )
+    _require_content(result)
     try:
         s = result.find("{"); e = result.rfind("}") + 1
         terms = json.loads(result[s:e]) if s >= 0 else {}

@@ -33,15 +33,15 @@ export interface TemplateProps {
 
 export type TemplateKey =
   | "quiz" | "truefalse" | "wheel" | "match" | "flashcards" | "anagram"
-  | "crossword" | "spellit" | "goldquest" | "teamboard" | "whack" | "tower";
+  | "crossword" | "spellit" | "goldquest" | "teamboard" | "tower";
 
 export const TEMPLATE_ICONS: Record<TemplateKey, string> = {
   quiz: "❓", truefalse: "✅", wheel: "🎡", match: "🔗", flashcards: "🃏", anagram: "🔤",
-  crossword: "✏️", spellit: "⌨️", goldquest: "💰", teamboard: "🏆", whack: "🔨", tower: "🏰",
+  crossword: "✏️", spellit: "⌨️", goldquest: "💰", teamboard: "🏆", tower: "🏰",
 };
 
 /** Templates a student can play alone (teamboard is a whole-class, one-screen game). */
-export const SOLO_TEMPLATES: TemplateKey[] = ["quiz", "truefalse", "match", "flashcards", "anagram", "crossword", "spellit", "goldquest", "tower", "whack", "wheel"];
+export const SOLO_TEMPLATES: TemplateKey[] = ["quiz", "truefalse", "match", "flashcards", "anagram", "crossword", "spellit", "goldquest", "tower", "wheel"];
 export const PRINTABLE_TEMPLATES: TemplateKey[] = ["quiz", "match", "crossword", "anagram", "flashcards", "truefalse"];
 
 export function shuffle<T>(arr: T[], rand: () => number = Math.random): T[] {

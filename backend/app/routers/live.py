@@ -168,6 +168,21 @@ async def _finish(s: LiveSession, db: AsyncSession) -> None:
         ))
 
 
+class KickBody(BaseModel):
+    nickname: str
+
+
+@router.post("/{session_id}/kick")
+async def kick_player(session_id: uuid.UUID, body: KickBody, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Remove a player — e.g. a guest who joined with an inappropriate nickname."""
+    s = await _host_session(session_id, user, db)
+    for p in await _players(s, db):
+        if p.nickname == body.nickname:
+            await db.delete(p)
+    await db.commit()
+    return {"message": "removed"}
+
+
 # ── Players ──────────────────────────────────────────────────
 
 class JoinBody(BaseModel):

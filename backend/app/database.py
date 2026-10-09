@@ -41,3 +41,8 @@ async def init_db():
         await conn.execute(text("ALTER TABLE interactive_videos ADD COLUMN IF NOT EXISTS text_track JSON"))
         await conn.execute(text("ALTER TABLE activities ADD COLUMN IF NOT EXISTS calm_mode BOOLEAN DEFAULT FALSE"))
         await conn.execute(text("ALTER TABLE activities ADD COLUMN IF NOT EXISTS game_minutes INTEGER"))
+        # Lessons that cached the "no content found" fallback before it was
+        # excluded from caching get regenerated on next view.
+        from app.services.rag_service import NO_CONTENT_MESSAGE
+        await conn.execute(text("UPDATE lessons SET explanation = NULL WHERE explanation = :m"), {"m": NO_CONTENT_MESSAGE})
+        await conn.execute(text("UPDATE lessons SET summary = NULL, has_summary = FALSE WHERE summary = :m"), {"m": NO_CONTENT_MESSAGE})

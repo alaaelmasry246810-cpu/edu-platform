@@ -40,7 +40,7 @@ PROMPT = """العرض البصري يصلح لكل المواد (علوم، ر�
   وكل جزء مشروح عنصر (أو g) عليه data-part مطابق لـ id في parts، بنفس ترتيب الشرح. لا تكتب نصوصاً داخل الـ SVG (الأسماء تظهر من parts)، ولا تستخدم script أو صور خارجية.
 - "process": عند شرح خطوات أو مسار أو دورة متتابعة. visual_data:
   {"steps": [{"label": "الفم", "detail": "مضغ الطعام", "icon": "👄"}], "cycle": false}
-- "image": عندما تفيد صورة حقيقية (كائن حي، جهاز معملي، ظاهرة طبيعية). visual_data:
+- "image": عندما تفيد صورة توضيحية (كائن حي، جهاز معملي، ظاهرة طبيعية) — رسم تعليمي لا صورة لأشخاص. visual_data:
   {"query": "كلمات بحث بالإنجليزية لصورة تعليمية في Wikimedia Commons", "caption": "وصف الصورة"}
 - "graph": عند شرح دالة أو منحنى أو علاقة بين متغيرين. visual_data:
   {"functions": [{"expr": "x^2 - 2*x + 1", "label": "ص = س² - 2س + 1"}], "x_range": [-5, 5], "y_range": [-2, 10],
@@ -270,7 +270,7 @@ async def resolve_images(scenes: list[dict]) -> None:
             try:
                 r = await http.get("https://commons.wikimedia.org/w/api.php", params={
                     "action": "query", "format": "json", "generator": "search",
-                    "gsrsearch": f"{data['query']} filetype:bitmap|drawing", "gsrnamespace": 6, "gsrlimit": 5,
+                    "gsrsearch": f"{data['query']} diagram filetype:drawing", "gsrnamespace": 6, "gsrlimit": 5,
                     "prop": "imageinfo", "iiprop": "url|extmetadata", "iiurlwidth": 1280,
                 })
                 pages = sorted((r.json().get("query") or {}).get("pages", {}).values(), key=lambda p: p.get("index", 99))

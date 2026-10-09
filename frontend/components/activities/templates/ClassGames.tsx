@@ -6,14 +6,14 @@ import { type TemplateProps, type Answer, optionsFor, shuffle, sfx, type Item, u
 
 // ── Gold Quest (Blooket-style): answer right → open a treasure chest ──
 
-type Chest = { kind: "gold" | "double" | "triple" | "lose" | "nothing"; amount?: number };
+type Chest = { kind: "gold" | "double" | "triple" | "nothing"; amount?: number };
 
 function rollChest(): Chest {
   const r = Math.random();
-  if (r < 0.45) return { kind: "gold", amount: [10, 20, 30, 40, 50, 75, 100][Math.floor(Math.random() * 7)] };
-  if (r < 0.6) return { kind: "double" };
-  if (r < 0.66) return { kind: "triple" };
-  if (r < 0.82) return { kind: "lose", amount: 25 };
+  // Chests only ever add: no losing outcomes (nothing staked, nothing lost).
+  if (r < 0.65) return { kind: "gold", amount: [10, 20, 30, 40, 50, 75, 100][Math.floor(Math.random() * 7)] };
+  if (r < 0.8) return { kind: "double" };
+  if (r < 0.86) return { kind: "triple" };
   return { kind: "nothing" };
 }
 
@@ -57,7 +57,6 @@ export function GoldQuestGame(props: TemplateProps) {
       if (c.kind === "gold") { sfx.coin(); return g + (c.amount ?? 0); }
       if (c.kind === "double") { sfx.coin(); return Math.max(g * 2, g + 10); }
       if (c.kind === "triple") { sfx.fanfare(); return Math.max(g * 3, g + 20); }
-      if (c.kind === "lose") { sfx.wrong(); return Math.round(g * 0.75); }
       return g;
     });
   };
@@ -67,7 +66,7 @@ export function GoldQuestGame(props: TemplateProps) {
     else setPos((p) => p + 1);
   };
   const chestLabel = (c: Chest) =>
-    c.kind === "gold" ? `+${c.amount} 🪙` : c.kind === "double" ? "×2 🪙" : c.kind === "triple" ? "×3 🪙" : c.kind === "lose" ? `−25% 💸` : t("games.gold.nothing");
+    c.kind === "gold" ? `+${c.amount} 🪙` : c.kind === "double" ? "×2 🪙" : c.kind === "triple" ? "×3 🪙" : t("games.gold.nothing");
 
   return (
     <div className="rounded-3xl bg-gradient-to-b from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30 p-5">
@@ -101,7 +100,7 @@ export function GoldQuestGame(props: TemplateProps) {
               <button key={k} onClick={() => phase === "chests" && open(k)} disabled={phase !== "chests"}
                 className={clsx("w-24 h-28 sm:w-28 sm:h-32 rounded-2xl flex flex-col items-center justify-center gap-1 shadow-lg transition-all",
                   phase === "chests" ? "bg-amber-500 hover:-translate-y-1 hover:bg-amber-400" : openedIdx === k ? "bg-white dark:bg-slate-800 scale-110 animate-pop" : "bg-amber-200 dark:bg-amber-900/40 opacity-60")}>
-                <span className="text-4xl">{phase === "chests" ? "🎁" : c.kind === "lose" ? "💀" : c.kind === "nothing" ? "🕸️" : "💰"}</span>
+                <span className="text-4xl">{phase === "chests" ? "🎁" : c.kind === "nothing" ? "🙂" : "💰"}</span>
                 {phase === "opened" && <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{chestLabel(c)}</span>}
               </button>
             ))}
@@ -193,8 +192,8 @@ export function WheelGame({ items }: TemplateProps) {
 
 // ── Team board (Baamboozle-style): one screen, teams take turns ──
 
-type Tile = { kind: "q"; item: number; points: number } | { kind: "bomb" | "swap" | "double" | "gift" | "steal" };
-const POWER_ICONS = { bomb: "💣", swap: "🔄", double: "✖️2", gift: "🎁", steal: "🦹" };
+type Tile = { kind: "q"; item: number; points: number } | { kind: "swap" | "double" | "gift" };
+const POWER_ICONS = { swap: "🔄", double: "✖️2", gift: "🎁" };
 const TEAM_COLORS = ["bg-rose-500", "bg-blue-500", "bg-amber-500", "bg-emerald-500", "bg-violet-500", "bg-cyan-500"];
 
 export function TeamBoardGame({ items }: { items: Item[] }) {
@@ -212,7 +211,7 @@ export function TeamBoardGame({ items }: { items: Item[] }) {
   const start = () => {
     const qs: Tile[] = shuffle(items.map((_, i) => i)).slice(0, 24).map((i) => ({ kind: "q", item: i, points: [5, 10, 15, 20, 25][Math.floor(Math.random() * 5)] }));
     const powers: Tile[] = withPowers
-      ? shuffle(["bomb", "swap", "double", "gift", "steal", "gift", "double"] as const).slice(0, Math.max(2, Math.round(qs.length / 5))).map((k) => ({ kind: k }))
+      ? shuffle(["swap", "double", "gift", "gift", "double", "gift"] as const).slice(0, Math.max(2, Math.round(qs.length / 5))).map((k) => ({ kind: k }))
       : [];
     setTiles(shuffle([...qs, ...powers]));
     setTeams(Array.from({ length: teamCount }, (_, k) => ({ name: t("games.board.team", { n: k + 1 }), score: 0 })));
@@ -234,15 +233,13 @@ export function TeamBoardGame({ items }: { items: Item[] }) {
     // Power tiles act immediately.
     const ts = teams.map((x) => ({ ...x }));
     const me = ts[turn];
-    // The highest-scoring *other* team (target of swap / steal).
+    // The highest-scoring *other* team (target of swap).
     const others = ts.map((_, i) => i).filter((i) => i !== turn);
     const leader = others.reduce((b, i) => (ts[i].score > ts[b].score ? i : b), others[0] ?? turn);
     let msg = "";
-    if (tile.kind === "bomb") { me.score = 0; msg = t("games.board.bomb", { team: me.name }); sfx.wrong(); }
     if (tile.kind === "gift") { me.score += 15; msg = t("games.board.gift", { team: me.name }); sfx.coin(); }
     if (tile.kind === "double") { me.score *= 2; msg = t("games.board.double", { team: me.name }); sfx.fanfare(); }
     if (tile.kind === "swap" && ts.length > 1) { [me.score, ts[leader].score] = [ts[leader].score, me.score]; msg = t("games.board.swap", { team: me.name, other: ts[leader].name }); sfx.coin(); }
-    if (tile.kind === "steal" && ts.length > 1) { const s = Math.min(10, ts[leader].score); ts[leader].score -= s; me.score += s; msg = t("games.board.steal", { team: me.name, other: ts[leader].name, n: s }); sfx.coin(); }
     setTeams(ts);
     setOpen(k); setMessage(msg);
   };

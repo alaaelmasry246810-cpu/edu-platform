@@ -8,7 +8,7 @@ from app.services.rag_service import client
 
 TEMPLATES = {
     "quiz", "wheel", "match", "flashcards", "anagram", "crossword", "truefalse",
-    "goldquest", "teamboard", "spellit", "whack", "tower",
+    "goldquest", "teamboard", "spellit", "tower",
 }
 MAX_ITEMS = 60
 
@@ -45,7 +45,8 @@ async def generate_items(content: str, count: int, title: str) -> list[dict]:
 2. اكتب بلغة الدرس نفسها.
 3. الإجابة a قصيرة (كلمة إلى ثلاث كلمات) لتصلح للعب المطابقة والكلمات المتقاطعة وترتيب الحروف.
 4. options أربعة خيارات أحدها a حرفياً، والباقي خاطئة لكن معقولة ومن نفس النوع.
-5. أعد JSON صالحاً فقط.
+5. المحتوى لائق ومناسب لعمر الطلاب وموافق للآداب العامة والقيم — بلا عنف أو ألفاظ غير لائقة أو سخرية من أحد.
+6. أعد JSON صالحاً فقط.
 
 نص الدرس:
 {content}"""},

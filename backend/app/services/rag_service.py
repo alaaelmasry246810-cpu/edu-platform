@@ -10,6 +10,10 @@ from qdrant_client.models import (
 from app.config import settings
 
 client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+
+# Returned instead of generated text when the curriculum content couldn't be
+# retrieved (e.g. the vector store is down). Callers must never cache it.
+NO_CONTENT_MESSAGE = "لم يتم العثور على محتوى كافٍ في المنهج لهذا الطلب."
 qdrant = (
     AsyncQdrantClient(url=settings.QDRANT_URL, api_key=settings.QDRANT_API_KEY or None)
     if settings.QDRANT_URL
@@ -123,7 +127,7 @@ async def generate_with_rag(
     context_chunks = await retrieve_full_scope(collection_name, filter_metadata, max_chunks=max_chunks)
 
     if not context_chunks:
-        return "لم يتم العثور على محتوى كافٍ في المنهج لهذا الطلب."
+        return NO_CONTENT_MESSAGE
 
     context = "\n\n---\n\n".join(context_chunks)
     ai_model = model or settings.AI_MODEL

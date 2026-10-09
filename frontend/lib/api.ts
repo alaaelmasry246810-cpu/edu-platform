@@ -217,6 +217,7 @@ export const liveAPI = {
   create:      (activityId: string, timeLimit?: number) => api.post("/live", { activity_id: activityId, time_limit: timeLimit }),
   hostState:   (id: string)                    => api.get(`/live/${id}/host`),
   action:      (id: string, action: string)    => api.post(`/live/${id}/action`, { action }),
+  kick:        (id: string, nickname: string)  => api.post(`/live/${id}/kick`, { nickname }),
   join:        (pin: string, nickname: string) => api.post("/live/join", { pin, nickname }),
   playerState: (playerId: string, token: string) => api.get(`/live/player/${playerId}`, { params: { token } }),
   answer:      (playerId: string, token: string, index: number, choice: number) =>

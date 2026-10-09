@@ -82,9 +82,11 @@ export default function LiveHost() {
             </div>
             {joinUrl && <QRCodeSVG value={joinUrl} size={130} />}
           </div>
+          {s.players.length > 0 && <p className="text-xs opacity-60">{t("games.live.kick")}</p>}
           <div className="flex flex-wrap justify-center gap-2 min-h-[6rem]">
             {s.players.length === 0 ? <p className="opacity-70 animate-pulse">{t("games.live.waiting")}</p> : s.players.map((n: string) => (
-              <span key={n} className="bg-white/15 rounded-xl px-4 py-2 font-bold animate-pop">{n}</span>
+              <button key={n} onClick={() => confirm(t("games.live.kickConfirm", { name: n })) && liveAPI.kick(id, n)}
+                title={t("games.live.kick")} className="bg-white/15 hover:bg-red-500/60 rounded-xl px-4 py-2 font-bold animate-pop transition-colors">{n}</button>
             ))}
           </div>
           <button onClick={() => act("next")} disabled={busy || s.player_count === 0}
