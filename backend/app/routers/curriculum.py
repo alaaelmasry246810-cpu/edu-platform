@@ -231,8 +231,11 @@ async def _process_curriculum(curriculum_id: str, file_path: str, ext: str, coll
             await db.commit()
 
         except Exception as e:
+            logger.exception("Curriculum %s processing failed", curriculum_id)
+            await db.rollback()
             curriculum.status = ProcessingStatus.FAILED
-            curriculum.error_message = str(e)
+            # Some errors (e.g. connection failures) have an empty str() — keep the type.
+            curriculum.error_message = f"{type(e).__name__}: {e}"[:1000]
             await db.commit()
 
 
