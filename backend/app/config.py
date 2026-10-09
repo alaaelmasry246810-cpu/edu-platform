@@ -53,7 +53,14 @@ class Settings(BaseSettings):
 
     # File Upload
     MAX_UPLOAD_SIZE_MB: int = 50
-    MAX_VIDEO_UPLOAD_MB: int = 500  # teacher lesson videos / podcasts (interactive videos)
+    MAX_VIDEO_UPLOAD_MB: int = 500  # teacher lesson videos / podcasts (interactive videos); 50 on Supabase's free plan
+
+    # Media storage (interactive videos, podcasts, narration). Set both on a host
+    # whose disk isn't persistent (e.g. Render free) — files then go to this
+    # public Supabase Storage bucket instead of UPLOAD_DIR.
+    SUPABASE_URL: str = ""
+    SUPABASE_SERVICE_KEY: str = ""
+    STORAGE_BUCKET: str = "media"
     UPLOAD_DIR: str = "/app/uploads"
 
     @property

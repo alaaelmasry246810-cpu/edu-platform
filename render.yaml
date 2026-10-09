@@ -5,6 +5,7 @@ services:
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     plan: free
+    region: ohio   # same region as the Neon database (us-east-2) — every request makes several DB round-trips
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
@@ -29,3 +30,15 @@ services:
         value: production
       - key: CORS_ORIGINS
         sync: false
+      # Media (interactive videos, podcasts, narration) goes to Supabase Storage —
+      # the free instance's disk is wiped on every restart/deploy.
+      - key: SUPABASE_URL
+        value: https://thmyjolndsjwaedpdoht.supabase.co
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: STORAGE_BUCKET
+        value: media
+      - key: MAX_VIDEO_UPLOAD_MB
+        value: "50"   # Supabase free plan: 50MB per file
+      - key: UPLOAD_DIR
+        value: /app/uploads

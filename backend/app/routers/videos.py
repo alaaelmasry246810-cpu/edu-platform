@@ -16,7 +16,7 @@ from app.middleware.auth import get_current_user, check_quota
 from app.models.user import User, UserRole
 from app.models.curriculum import Curriculum, Unit, Lesson, ProcessingStatus
 from app.models.interactive_video import InteractiveVideo, VideoSource
-from app.services import video_service, text_track, lesson_content
+from app.services import video_service, text_track, lesson_content, storage
 
 router = APIRouter(prefix="/videos", tags=["Interactive Videos"])
 
@@ -29,13 +29,13 @@ def _require_teacher(user: User):
         raise HTTPException(status_code=403, detail="Teachers only")
 
 
+def _storage_prefix(video: InteractiveVideo) -> str:
+    return f"videos/{video.owner_id}/{video.id}"
+
+
 def _video_dir(video: InteractiveVideo) -> Path:
-    return Path(settings.UPLOAD_DIR) / "videos" / str(video.owner_id) / str(video.id)
-
-
-def _public_url(path: Path) -> str:
-    rel = path.relative_to(Path(settings.UPLOAD_DIR)).as_posix()
-    return f"/uploads/{rel}"
+    """Local working copy (also the permanent copy when storage isn't remote)."""
+    return Path(settings.UPLOAD_DIR) / _storage_prefix(video)
 
 
 def _serialize(v: InteractiveVideo) -> dict:
@@ -249,12 +249,13 @@ async def _voice_scenes(video: InteractiveVideo, scenes: list[dict]) -> None:
     for i, scene in enumerate(scenes):
         text = scene.get("narration") or ". ".join([scene.get("title", "")] + scene.get("bullets", []))
         # New file name per synthesis so browsers never replay a cached old take.
-        path = out_dir / f"scene_{i}_{uuid.uuid4().hex[:6]}.mp3"
+        name = f"scene_{i}_{uuid.uuid4().hex[:6]}.mp3"
+        path = out_dir / name
         await video_service.synthesize(text, video.voice or "nova", path)
-        old = scene.get("audio_url")
-        if old:
-            (Path(settings.UPLOAD_DIR) / old.removeprefix("/uploads/")).unlink(missing_ok=True)
-        scene["audio_url"] = _public_url(path)
+        await storage.delete_url(scene.get("audio_url"))
+        scene["audio_url"] = await storage.save_file(f"{_storage_prefix(video)}/{name}", path, "audio/mpeg")
+        if storage.remote():
+            path.unlink(missing_ok=True)
 
 
 # ── Create: podcast / uploaded video ─────────────────────────
@@ -336,8 +337,12 @@ async def _create_media_video(
 
     dest = _video_dir(video) / f"media{ext}"
     await _save_upload(file, dest, settings.MAX_VIDEO_UPLOAD_MB)
-    video.media_path = str(dest)
-    video.media_url = _public_url(dest)
+    try:
+        video.media_url = await storage.save_file(f"{_storage_prefix(video)}/media{ext}", dest, file.content_type)
+    except RuntimeError as e:
+        dest.unlink(missing_ok=True)
+        raise HTTPException(status_code=502, detail=f"تعذّر حفظ الملف: {e}")
+    video.media_path = str(dest)  # local working copy for transcription
     await db.commit()
 
     if process:
@@ -358,7 +363,9 @@ async def _process_media_video(video_id: str):
 
             lesson_text = await _lesson_text(video, curriculum, db)
             content = lesson_text or await _video_content(video, curriculum, db)
-            segments = await video_service.transcribe(Path(video.media_path))
+            # The local copy may be gone (disk wiped on restart) — fetch it back from storage.
+            media = await storage.fetch_to(video.media_url, Path(video.media_path))
+            segments = await video_service.transcribe(media)
             is_podcast = video.source == VideoSource.PODCAST
 
             if segments:
@@ -477,6 +484,7 @@ async def delete_video(video_id: uuid.UUID, current_user: User = Depends(get_cur
     _require_teacher(current_user)
     video = await _get_video(video_id, current_user, db, manage=True)
     shutil.rmtree(_video_dir(video), ignore_errors=True)
+    await storage.delete_prefix(_storage_prefix(video))
     await db.delete(video)
     await db.commit()
     return {"message": "تم حذف الفيديو"}
