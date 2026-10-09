@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { UploadCloud, CheckCircle2 } from "lucide-react";
-import { api } from "@/lib/api";
+import { api, withDirectUpload } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 
 export default function MobileUploadPage() {
@@ -33,9 +33,8 @@ export default function MobileUploadPage() {
     fd.append("content_type", contentType);
 
     try {
-      await api.post("/curricula/upload", fd, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const headers = { Authorization: `Bearer ${token}` };
+      await api.post("/curricula/upload", await withDirectUpload(fd, "curriculum", { headers }), { headers });
       setDone(true);
     } catch (err: any) {
       if (err.response?.status === 401) {

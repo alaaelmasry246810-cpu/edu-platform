@@ -18,7 +18,9 @@ from app.models.assignment import StudentGroup
 from app.middleware.auth import get_current_user, get_uploader, check_quota, create_upload_session_token
 from app.config import settings
 from app.services.ocr_service import DocumentParser, CurriculumChunker, PageText
-from app.services import rag_service, qr_service, exam_extraction_service
+from app.services import rag_service, qr_service, exam_extraction_service, storage
+from app.services.tasks import run_or_schedule
+from app.routers.uploads import owned_key
 from app.services.notification_service import notify
 
 logger = logging.getLogger(__name__)
@@ -52,7 +54,9 @@ async def _validate_owned_group(group_id: uuid.UUID | None, teacher_id: uuid.UUI
 @router.post("/upload", status_code=202)
 async def upload_curriculum(
     background_tasks: BackgroundTasks,
-    file: UploadFile = File(...),
+    file: UploadFile | None = File(None),
+    # Set instead of `file` when the browser uploaded straight to storage (see routers/uploads.py)
+    storage_key: str | None = Form(None),
     title: str = Form(...),
     subject: str = Form(None),
     grade_level: str = Form(None),
@@ -68,20 +72,33 @@ async def upload_curriculum(
 
     await _validate_owned_group(group_id, current_user.id, db)
 
-    ext = Path(file.filename).suffix.lower()
+    if not file and not storage_key:
+        raise HTTPException(status_code=422, detail="No file uploaded")
+    name = file.filename if file else storage_key
+    ext = Path(name).suffix.lower()
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(status_code=400, detail=f"Unsupported file type: {ext}")
 
-    # Save file
+    # Save file (a local working copy — it's only needed while processing)
     user_dir = Path(settings.UPLOAD_DIR) / str(current_user.id)
     user_dir.mkdir(parents=True, exist_ok=True)
     file_path = user_dir / f"{uuid.uuid4()}{ext}"
 
-    content = await file.read()
-    if len(content) > settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024:
-        raise HTTPException(status_code=413, detail="File too large")
-
-    file_path.write_bytes(content)
+    if storage_key:
+        key = owned_key(storage_key, "curricula", current_user.id)
+        try:
+            await storage.download(settings.INCOMING_BUCKET, key, file_path)
+        except RuntimeError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        await storage.delete_object(settings.INCOMING_BUCKET, key)
+        if file_path.stat().st_size > settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024:
+            file_path.unlink(missing_ok=True)
+            raise HTTPException(status_code=413, detail="File too large")
+    else:
+        content = await file.read()
+        if len(content) > settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024:
+            raise HTTPException(status_code=413, detail="File too large")
+        file_path.write_bytes(content)
 
     # Create DB record
     curriculum = Curriculum(
@@ -102,11 +119,9 @@ async def upload_curriculum(
 
     # Update usage
     current_user.pages_uploaded_this_month += 1
+    await db.commit()  # the processing job opens its own session and must see this row
 
-    # Background processing
-    background_tasks.add_task(
-        _process_curriculum, str(curr_id), str(file_path), ext, collection_id
-    )
+    await run_or_schedule(background_tasks, _process_curriculum, str(curr_id), str(file_path), ext, collection_id)
 
     return {
         "curriculum_id": str(curr_id),

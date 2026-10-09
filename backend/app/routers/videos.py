@@ -17,6 +17,8 @@ from app.models.user import User, UserRole
 from app.models.curriculum import Curriculum, Unit, Lesson, ProcessingStatus
 from app.models.interactive_video import InteractiveVideo, VideoSource
 from app.services import video_service, text_track, lesson_content, storage
+from app.services.tasks import run_or_schedule
+from app.routers.uploads import owned_key
 
 router = APIRouter(prefix="/videos", tags=["Interactive Videos"])
 
@@ -211,7 +213,8 @@ async def create_ai_video(
     )
     db.add(video)
     await db.commit()
-    background_tasks.add_task(_process_ai_video, str(video.id), min(max(body.scene_count, 3), 12))
+    await run_or_schedule(background_tasks, _process_ai_video, str(video.id), min(max(body.scene_count, 3), 12))
+    await db.refresh(video)
     return _serialize(video)
 
 
@@ -263,7 +266,8 @@ async def _voice_scenes(video: InteractiveVideo, scenes: list[dict]) -> None:
 @router.post("/podcast", status_code=202)
 async def create_podcast_video(
     background_tasks: BackgroundTasks,
-    file: UploadFile = File(...),
+    file: UploadFile | None = File(None),
+    storage_key: str | None = Form(None),
     curriculum_id: uuid.UUID = Form(...),
     lesson_id: uuid.UUID | None = Form(None),
     unit_id: uuid.UUID | None = Form(None),
@@ -276,14 +280,15 @@ async def create_podcast_video(
     return await _create_media_video(
         VideoSource.PODCAST, _AUDIO_EXT, True,
         background_tasks, file, curriculum_id, lesson_id, unit_id, title, current_user, db,
-        display_mode=display_mode, source_text=source_text,
+        display_mode=display_mode, source_text=source_text, storage_key=storage_key,
     )
 
 
 @router.post("/upload", status_code=202)
 async def create_uploaded_video(
     background_tasks: BackgroundTasks,
-    file: UploadFile = File(...),
+    file: UploadFile | None = File(None),
+    storage_key: str | None = Form(None),
     curriculum_id: uuid.UUID = Form(...),
     lesson_id: uuid.UUID | None = Form(None),
     unit_id: uuid.UUID | None = Form(None),
@@ -297,23 +302,27 @@ async def create_uploaded_video(
     return await _create_media_video(
         VideoSource.UPLOAD, _VIDEO_EXT, auto_interactions,
         background_tasks, file, curriculum_id, lesson_id, unit_id, title, current_user, db,
-        display_mode=display_mode, source_text=source_text,
+        display_mode=display_mode, source_text=source_text, storage_key=storage_key,
     )
 
 
 async def _create_media_video(
     source: VideoSource, allowed_ext: set[str], process: bool,
-    background_tasks: BackgroundTasks, file: UploadFile,
+    background_tasks: BackgroundTasks, file: UploadFile | None,
     curriculum_id: uuid.UUID, lesson_id: uuid.UUID | None, unit_id: uuid.UUID | None, title: str,
     current_user: User, db: AsyncSession,
-    display_mode: str = "visual", source_text: str = "",
+    display_mode: str = "visual", source_text: str = "", storage_key: str | None = None,
 ):
     _require_teacher(current_user)
     curriculum, unit, lesson = await _resolve_scope(curriculum_id, unit_id, lesson_id, current_user, db)
     # The lesson-text view needs a transcript to time the sentences.
     if display_mode in ("text", "both"):
         process = True
-    ext = Path(file.filename or "").suffix.lower() or (".webm" if source == VideoSource.PODCAST else "")
+    if not file and not storage_key:
+        raise HTTPException(status_code=422, detail="No file uploaded")
+    if storage_key:
+        owned_key(storage_key, "videos", current_user.id)
+    ext = Path((file.filename if file else storage_key) or "").suffix.lower() or (".webm" if source == VideoSource.PODCAST else "")
     if ext not in allowed_ext:
         raise HTTPException(status_code=400, detail=f"Unsupported file type: {ext}")
     if process:
@@ -336,17 +345,22 @@ async def _create_media_video(
     await db.flush()
 
     dest = _video_dir(video) / f"media{ext}"
-    await _save_upload(file, dest, settings.MAX_VIDEO_UPLOAD_MB)
-    try:
-        video.media_url = await storage.save_file(f"{_storage_prefix(video)}/media{ext}", dest, file.content_type)
-    except RuntimeError as e:
-        dest.unlink(missing_ok=True)
-        raise HTTPException(status_code=502, detail=f"تعذّر حفظ الملف: {e}")
+    if storage_key:
+        # Already in storage (uploaded by the browser); fetched locally only if transcribed.
+        video.media_url = storage.public_url(storage_key)
+    else:
+        await _save_upload(file, dest, settings.MAX_VIDEO_UPLOAD_MB)
+        try:
+            video.media_url = await storage.save_file(f"{_storage_prefix(video)}/media{ext}", dest, file.content_type)
+        except RuntimeError as e:
+            dest.unlink(missing_ok=True)
+            raise HTTPException(status_code=502, detail=f"تعذّر حفظ الملف: {e}")
     video.media_path = str(dest)  # local working copy for transcription
     await db.commit()
 
     if process:
-        background_tasks.add_task(_process_media_video, str(video.id))
+        await run_or_schedule(background_tasks, _process_media_video, str(video.id))
+        await db.refresh(video)
     return _serialize(video)
 
 
@@ -473,9 +487,10 @@ async def regenerate_video(
     video.is_published = False
     await db.commit()
     if video.source == VideoSource.AI:
-        background_tasks.add_task(_process_ai_video, str(video.id), min(max(scene_count, 3), 12))
+        await run_or_schedule(background_tasks, _process_ai_video, str(video.id), min(max(scene_count, 3), 12))
     else:
-        background_tasks.add_task(_process_media_video, str(video.id))
+        await run_or_schedule(background_tasks, _process_media_video, str(video.id))
+    await db.refresh(video)
     return _serialize(video)
 
 
@@ -485,6 +500,7 @@ async def delete_video(video_id: uuid.UUID, current_user: User = Depends(get_cur
     video = await _get_video(video_id, current_user, db, manage=True)
     shutil.rmtree(_video_dir(video), ignore_errors=True)
     await storage.delete_prefix(_storage_prefix(video))
+    await storage.delete_url(video.media_url)  # a browser upload lives outside that prefix
     await db.delete(video)
     await db.commit()
     return {"message": "تم حذف الفيديو"}

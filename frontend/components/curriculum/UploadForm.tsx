@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { curriculumAPI, assignmentAPI } from "@/lib/api";
+import { curriculumAPI, withDirectUpload, assignmentAPI } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { useAuthStore } from "@/lib/store";
 import PhoneUploadQr from "./PhoneUploadQr";
@@ -49,7 +49,7 @@ export default function UploadForm({ redirectTo }: { redirectTo: string }) {
     if (groupId) fd.append("group_id", groupId);
 
     try {
-      await curriculumAPI.upload(fd);
+      await curriculumAPI.upload(await withDirectUpload(fd, "curriculum"));
       toast.success(t("dashboard.upload.success"));
       router.push(redirectTo);
     } catch (err: any) {

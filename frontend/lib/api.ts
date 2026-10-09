@@ -236,3 +236,27 @@ export const studyAPI = {
   progress: (lessonId: string)                                  => api.get(`/study/${lessonId}`),
   review:   (lessonId: string, cardIndex: number, known: boolean) => api.post(`/study/${lessonId}/review`, { card_index: cardIndex, known }),
 };
+
+/**
+ * On hosts with a small request-size limit (Vercel: 4.5MB) the server asks for
+ * files to go straight to storage: this swaps the FormData's `file` for the
+ * `storage_key` it was uploaded under. Elsewhere it leaves the form untouched.
+ */
+export async function withDirectUpload(
+  fd: FormData,
+  purpose: "curriculum" | "video" | "podcast",
+  opts: { headers?: Record<string, string>; onUploadProgress?: (e: any) => void } = {},
+): Promise<FormData> {
+  const file = fd.get("file");
+  if (!(file instanceof Blob)) return fd;
+  const filename = (file as File).name || `upload.${purpose === "podcast" ? "webm" : "bin"}`;
+  const { data } = await api.post("/storage/upload-url", { filename, purpose, size: file.size }, { headers: opts.headers });
+  if (!data.enabled) return fd;
+  await axios.put(data.url, file, {
+    headers: { "Content-Type": file.type || "application/octet-stream", "x-upsert": "true" },
+    onUploadProgress: opts.onUploadProgress,
+  });
+  fd.delete("file");
+  fd.append("storage_key", data.key);
+  return fd;
+}

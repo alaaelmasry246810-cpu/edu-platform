@@ -61,6 +61,14 @@ class Settings(BaseSettings):
     SUPABASE_URL: str = ""
     SUPABASE_SERVICE_KEY: str = ""
     STORAGE_BUCKET: str = "media"
+    # Private bucket for files the browser uploads directly (curriculum PDFs/images)
+    # before the server processes them.
+    INCOMING_BUCKET: str = "incoming"
+
+    # Run "background" jobs (curriculum processing, video generation) inside the
+    # request instead — for serverless hosts like Vercel that may stop work once
+    # the response is sent. Requests then take as long as the job (max 300s there).
+    INLINE_TASKS: bool = False
     UPLOAD_DIR: str = "/app/uploads"
 
     @property

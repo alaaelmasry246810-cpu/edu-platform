@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 import toast from "react-hot-toast";
-import { videosAPI } from "@/lib/api";
+import { videosAPI, withDirectUpload } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 
 type Method = "ai" | "podcast" | "upload";
@@ -117,13 +117,13 @@ export default function VideoStudio({ curriculumId, lessonId, lessonTitle, unitI
           const name = audioBlob instanceof File ? audioBlob.name : `podcast.${ext}`;
           form.append("file", audioBlob, name);
           setUploadPct(0);
-          ({ data } = await videosAPI.createPodcast(form, onProgress));
+          ({ data } = await videosAPI.createPodcast(await withDirectUpload(form, "podcast", { onUploadProgress: onProgress }), onProgress));
         } else {
           if (!videoFile) { toast.error(t("video.studio.needVideo")); return; }
           form.append("file", videoFile);
           form.append("auto_interactions", String(autoQuestions));
           setUploadPct(0);
-          ({ data } = await videosAPI.upload(form, onProgress));
+          ({ data } = await videosAPI.upload(await withDirectUpload(form, "video", { onUploadProgress: onProgress }), onProgress));
         }
       }
       toast.success(t("video.studio.started"));

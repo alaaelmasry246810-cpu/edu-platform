@@ -126,3 +126,38 @@ async def delete_prefix(prefix: str) -> None:
                 await http.request("DELETE", _api(f"object/{settings.STORAGE_BUCKET}"), headers=_headers(), json={"prefixes": names})
     except (httpx.HTTPError, ValueError):
         pass
+
+
+# ── Direct browser uploads (bypass the host's request-size limit) ──
+
+async def create_signed_upload(bucket: str, key: str) -> str:
+    """A one-time URL the browser PUTs the file to, straight into Supabase —
+    needed on Vercel, whose functions reject request bodies over 4.5MB."""
+    async with httpx.AsyncClient(timeout=_TIMEOUT) as http:
+        r = await http.post(_api(f"object/upload/sign/{bucket}/{key}"), headers=_headers(), json={})
+    if r.status_code >= 300:
+        raise RuntimeError(f"Could not create upload URL ({r.status_code}): {r.text[:200]}")
+    return _api(r.json()["url"].lstrip("/"))
+
+
+async def download(bucket: str, key: str, dest: Path) -> Path:
+    """Fetch a stored object (public or private bucket) to a local file."""
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    async with httpx.AsyncClient(timeout=_TIMEOUT) as http:
+        async with http.stream("GET", _api(f"object/{bucket}/{key}"), headers=_headers()) as r:
+            if r.status_code >= 300:
+                raise RuntimeError(f"Stored file not found ({r.status_code})")
+            with dest.open("wb") as out:
+                async for chunk in r.aiter_bytes():
+                    out.write(chunk)
+    return dest
+
+
+async def delete_object(bucket: str, key: str) -> None:
+    if not remote():
+        return
+    try:
+        async with httpx.AsyncClient(timeout=_TIMEOUT) as http:
+            await http.request("DELETE", _api(f"object/{bucket}"), headers=_headers(), json={"prefixes": [key]})
+    except httpx.HTTPError:
+        pass

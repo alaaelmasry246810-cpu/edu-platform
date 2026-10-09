@@ -44,3 +44,4 @@ backend/test_curriculum.pdf
 
 # Ready-to-copy production env values (secrets) — never commit
 back4app-env.txt
+vercel-backend.env
