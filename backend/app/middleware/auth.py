@@ -13,6 +13,7 @@ from app.models.user import User, UserRole, AccountStatus
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+_optional_oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 
 
 def verify_password(plain: str, hashed: str) -> bool:
@@ -74,6 +75,19 @@ async def get_current_user(
     if user.status != AccountStatus.ACTIVE:
         raise HTTPException(status_code=403, detail=f"Account is {user.status.value}")
     return user
+
+
+async def get_optional_user(
+    token: str | None = Depends(_optional_oauth2_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> User | None:
+    """The signed-in user, or None for guests (live games, activity share links)."""
+    if not token:
+        return None
+    try:
+        return await get_current_user(token, db)
+    except HTTPException:
+        return None
 
 
 async def get_uploader(

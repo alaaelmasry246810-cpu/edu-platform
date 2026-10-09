@@ -15,29 +15,36 @@ interface Props {
   activity: { id: string; title: string; items: Item[]; template: string; power_ups?: boolean; time_per_question?: number; calm_mode?: boolean; game_minutes?: number | null };
   /** Save each finished play (students). */
   saveAttempts?: boolean;
+  /** Custom save (e.g. a guest via the share link) — replaces saveAttempts. */
+  onSave?: (template: TemplateKey, r: GameResult) => Promise<unknown>;
+  /** Shown under the result once it's saved (e.g. the leaderboard). */
+  resultExtra?: (savedAt: number) => React.ReactNode;
   /** Whole-class templates (team board) — for the teacher's screen. */
   classroom?: boolean;
 }
 
 /** One set of items, many games: switch template without rewriting anything. */
-export default function ActivityPlayer({ activity, saveAttempts, classroom }: Props) {
+export default function ActivityPlayer({ activity, saveAttempts, onSave, resultExtra, classroom }: Props) {
   const { t } = useI18n();
   const templates: TemplateKey[] = classroom ? [...SOLO_TEMPLATES, "teamboard"] : SOLO_TEMPLATES;
   const initial = (templates.includes(activity.template as TemplateKey) ? activity.template : "quiz") as TemplateKey;
   const [template, setTemplate] = useState<TemplateKey>(initial);
   const [result, setResult] = useState<GameResult | null>(null);
   const [round, setRound] = useState(0);
+  const [savedAt, setSavedAt] = useState(0);
   const calm = !!activity.calm_mode;
   useEffect(() => { setMuted(calm); return () => setMuted(false); }, [calm]);
 
   const onFinish = async (r: GameResult) => {
     setResult(r);
     sfx.fanfare();
-    if (saveAttempts) {
+    const save = onSave ?? (saveAttempts ? (k: TemplateKey, res: GameResult) => activitiesAPI.saveAttempt(activity.id, { template: k, ...res }) : null);
+    if (save) {
       try {
-        await activitiesAPI.saveAttempt(activity.id, { template, ...r });
-      } catch {
-        toast.error(t("games.saveError"));
+        await save(template, r);
+        setSavedAt(Date.now());  // lets the leaderboard below refresh with this result
+      } catch (err: any) {
+        toast.error(err.response?.data?.detail || t("games.saveError"));
       }
     }
   };
@@ -84,6 +91,7 @@ export default function ActivityPlayer({ activity, saveAttempts, classroom }: Pr
                 🎲 {t("games.tryAnother")}
               </button>
             </div>
+            {resultExtra && savedAt > 0 && <div className="pt-4 text-start">{resultExtra(savedAt)}</div>}
           </div>
         ) : (
           <div key={`${template}-${round}`}>

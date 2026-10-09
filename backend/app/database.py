@@ -41,6 +41,14 @@ async def init_db():
         await conn.execute(text("ALTER TABLE interactive_videos ADD COLUMN IF NOT EXISTS text_track JSON"))
         await conn.execute(text("ALTER TABLE activities ADD COLUMN IF NOT EXISTS calm_mode BOOLEAN DEFAULT FALSE"))
         await conn.execute(text("ALTER TABLE activities ADD COLUMN IF NOT EXISTS game_minutes INTEGER"))
+        await conn.execute(text("ALTER TABLE activities ADD COLUMN IF NOT EXISTS link_enabled BOOLEAN DEFAULT FALSE"))
+        await conn.execute(text("ALTER TABLE activities ADD COLUMN IF NOT EXISTS share_token VARCHAR(32)"))
+        await conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_activities_share_token ON activities (share_token)"))
+        await conn.execute(text("ALTER TABLE activities ADD COLUMN IF NOT EXISTS allow_guests BOOLEAN DEFAULT TRUE"))
+        await conn.execute(text("ALTER TABLE activities ADD COLUMN IF NOT EXISTS leaderboard_visible BOOLEAN DEFAULT TRUE"))
+        await conn.execute(text("ALTER TABLE activity_attempts ALTER COLUMN user_id DROP NOT NULL"))
+        await conn.execute(text("ALTER TABLE activity_attempts ADD COLUMN IF NOT EXISTS guest_name VARCHAR(40)"))
+        await conn.execute(text("ALTER TABLE activity_attempts ADD COLUMN IF NOT EXISTS guest_key VARCHAR(64)"))
         # Lessons that cached the "no content found" fallback before it was
         # excluded from caching get regenerated on next view.
         from app.services.rag_service import NO_CONTENT_MESSAGE

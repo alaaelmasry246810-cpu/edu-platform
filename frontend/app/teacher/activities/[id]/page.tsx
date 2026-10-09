@@ -6,9 +6,9 @@ import toast from "react-hot-toast";
 import { activitiesAPI, liveAPI } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import ActivityPlayer from "@/components/activities/ActivityPlayer";
-import { ActivityEditor, AssignPanel, ReportPanel } from "@/components/activities/TeacherPanels";
+import { ActivityEditor, AssignPanel, ReportPanel, SharePanel } from "@/components/activities/TeacherPanels";
 
-type Tab = "play" | "edit" | "assign" | "report";
+type Tab = "play" | "edit" | "assign" | "share" | "report";
 
 export default function TeacherActivity() {
   const { id } = useParams<{ id: string }>();
@@ -48,7 +48,8 @@ export default function TeacherActivity() {
   const owner = activity.is_owner;
   const tabs: { key: Tab; label: string }[] = owner
     ? [{ key: "play", label: `▶ ${t("games.tabs.play")}` }, { key: "edit", label: `✏️ ${t("games.tabs.edit")}` },
-       { key: "assign", label: `📝 ${t("games.tabs.assign")}` }, { key: "report", label: `📊 ${t("games.tabs.report")}` }]
+       { key: "assign", label: `📝 ${t("games.tabs.assign")}` }, { key: "share", label: `🔗 ${t("games.tabs.share")}` },
+       { key: "report", label: `📊 ${t("games.tabs.report")}` }]
     : [{ key: "play", label: `▶ ${t("games.tabs.play")}` }];
 
   return (
@@ -84,6 +85,7 @@ export default function TeacherActivity() {
       {tab === "play" && <ActivityPlayer activity={activity} classroom />}
       {tab === "edit" && <ActivityEditor activity={activity} onSaved={(a) => { setActivity(a); setTab("play"); }} />}
       {tab === "assign" && <AssignPanel activity={activity} onSaved={setActivity} />}
+      {tab === "share" && <SharePanel activity={activity} onSaved={setActivity} />}
       {tab === "report" && <ReportPanel activityId={activity.id} />}
     </div>
   );

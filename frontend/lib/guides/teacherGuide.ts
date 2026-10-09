@@ -39,6 +39,47 @@ export function getTeacherGuide(locale: "ar" | "en"): { title: string; subtitle:
           ],
         },
         {
+          icon: "🎮", title: "Games & Activities", desc: "Write questions once, play them as many games, assign them, print them",
+          items: [
+            { label: "Create an activity", desc: "Games & Activities → New activity. Type questions and answers, quick-paste one per line (question | answer | wrong option…), take them from a lesson's flashcards, or 🤖 generate them with AI from the lesson text" },
+            { label: "11 games, one click apart", desc: "Quiz, speed true/false, match up, flashcards, anagram, crossword, spell it, random wheel, gold quest, build the tower, and the team board (one screen for the whole class, teams take turns)" },
+            { label: "🖨️ Print / PDF", desc: "Quiz, match, crossword, anagram, true/false and cut-out cards print as a worksheet with an optional answer key" },
+            { label: "🌍 Public library", desc: "Share your activity with other teachers, or copy theirs into your own and edit it" },
+            { label: "📝 Assign tab", desc: "Make it homework for all your students or one group, with a due date and seconds per question. Options: power-ups (50/50, double points, freeze time), 🧘 calm mode for older students (no sounds/memes/animations) and a hard time limit for game modes" },
+            { label: "📊 Report tab", desc: "The leaderboard, each student's best score and time, the accuracy of every question, the hardest questions and the most common wrong answer" },
+            { label: "From a lesson", desc: "The 🎮 Games tab on any lesson lists its activities and has a button to make one from that lesson" },
+          ],
+        },
+        {
+          icon: "🔗", title: "Share Link & Leaderboard", desc: "Send one link — students play and get ranked by score and speed",
+          items: [
+            { label: "Turn the link on", desc: "Open the activity → 🔗 Share tab → Share link. Copy it, send it on WhatsApp, or show the QR code" },
+            { label: "You control it", desc: "Switch the link off any time; 🔄 New link kills the old one immediately" },
+            { label: "Who can open it", desc: "\"Open to anyone\": people without an account play under a name. Off: only your registered students, after signing in" },
+            { label: "Leaderboard", desc: "Ranked by % correct, then the faster time, then points — each player's best attempt in the assessed games counts (flashcards, wheel, gold quest and tower are practice only). Choose whether players see it after finishing; you always see it in the report" },
+          ],
+        },
+        {
+          icon: "🔴", title: "Live Game", desc: "A live class competition: questions on your screen, answers from phones",
+          items: [
+            { label: "Start", desc: "Open any activity → 🔴 Live game. Show the screen: students join at /play with the PIN or the QR code — no account needed" },
+            { label: "Scoring", desc: "Correct answers score more the faster they come, with a streak bonus. After each question you see the answer distribution and the leaderboard; the podium at the end" },
+            { label: "Control", desc: "The answer is revealed when time runs out or everyone has answered (or press Reveal). Click a player's name in the lobby to remove them (e.g. an inappropriate nickname). 🔊 mutes the music" },
+            { label: "Results", desc: "Signed-in students' scores are saved to the activity's report" },
+          ],
+        },
+        {
+          icon: "🎞️", title: "Interactive Videos", desc: "Turn a lesson (or a whole unit) into an interactive video — from the lesson's 🎬 Video tab",
+          items: [
+            { label: "🤖 AI", desc: "Script taken from the lesson text itself (or a free explanation), narrated scene by scene, with questions between scenes" },
+            { label: "🎙️ Podcast", desc: "Record your voice in the browser or upload audio — slides follow what you say and questions land in the right places" },
+            { label: "📤 Upload a video", desc: "Your own video with interactive questions inside (written by AI or by you)" },
+            { label: "Visuals for every subject", desc: "Animated chemical equations, organ diagrams that light up part by part, graphs, timelines, maps, sentence parsing, comparisons, definitions, real illustrations" },
+            { label: "📖 Lesson-text view", desc: "Show the lesson text itself with the sentence being said lit up — alone or under the scenes" },
+            { label: "Review & publish", desc: "Edit the questions, scenes and narration, then publish — students see it only after publishing" },
+          ],
+        },
+        {
           icon: "📋", title: "Needs Review", desc: "Grade the exams your students submitted",
           items: [
             { label: "Manual grading", desc: "Essay always lands here, plus any question (of any type) whose source had no known correct answer — those are never auto-graded or guessed, even if a student's answer looks right" },
@@ -125,6 +166,47 @@ export function getTeacherGuide(locale: "ar" | "en"): { title: string; subtitle:
           { label: "عرض القائمة", desc: "افتح التكليف عشان تشوف كل طالب مستهدف وحالة محاولته" },
         ],
       },
+        {
+          icon: "🎮", title: "الأنشطة والألعاب", desc: "اكتب الأسئلة مرة واحدة والعبها بكذا لعبة، واسندها واجب، واطبعها",
+          items: [
+            { label: "عمل نشاط", desc: "الأنشطة والألعاب ← نشاط جديد. اكتب الأسئلة وإجاباتها، أو الصقها بسرعة سطر لكل سؤال (السؤال | الإجابة | اختيار غلط…)، أو خدها من فلاش كارد الدرس، أو 🤖 ولّدها بالذكاء الاصطناعي من نص الدرس" },
+            { label: "11 لعبة بضغطة", desc: "مسابقة، صح وخطأ سريع، توصيل، بطاقات، رتّب الحروف، كلمات متقاطعة، اكتب الإجابة، العجلة العشوائية، صيد الذهب، ابني البرج، ولوحة الفرق (شاشة واحدة للفصل كله والفرق بتتبادل الأدوار)" },
+            { label: "🖨️ طباعة / PDF", desc: "المسابقة والتوصيل والكلمات المتقاطعة ورتّب الحروف وصح وخطأ والبطاقات بتتطبع ورقة عمل ومعاها نموذج إجابة لو حبيت" },
+            { label: "🌍 المكتبة العامة", desc: "شارك نشاطك مع مدرسين تانيين، أو انسخ نشاط مدرس تاني لأنشطتك وعدّل فيه" },
+            { label: "📝 تاب الإسناد", desc: "اسنده واجب لكل طلابك أو لمجموعة، بآخر موعد ووقت لكل سؤال. واختيارات: المساعدات (احذف إجابتين، نقاط مضاعفة، وقّف الوقت)، 🧘 وضع هادئ للمراحل الكبيرة (من غير أصوات ولا رسائل تشجيع ولا حركات)، وحد زمني صارم لألعاب اللعب" },
+            { label: "📊 تاب التقرير", desc: "لوحة الترتيب، وأحسن نتيجة ووقت لكل طالب، ونسبة الإجابة الصح لكل سؤال، وأصعب الأسئلة وأكتر إجابة غلط" },
+            { label: "من الدرس", desc: "تاب 🎮 ألعاب في أي درس بيعرض أنشطته، وفيه زرار تعمل نشاط من الدرس ده" },
+          ],
+        },
+        {
+          icon: "🔗", title: "رابط المشاركة والترتيب", desc: "ابعت رابط واحد — الطلاب يحلوا ويترتبوا بالدرجة والسرعة",
+          items: [
+            { label: "فعّل الرابط", desc: "افتح النشاط ← تاب 🔗 مشاركة ← رابط مشاركة. انسخه أو ابعته واتساب أو اعرض كود QR" },
+            { label: "إنت المتحكم", desc: "تقفل الرابط في أي وقت، و🔄 رابط جديد بيلغي القديم فوراً" },
+            { label: "مين يقدر يفتحه", desc: "«مسموح لأي حد»: اللي مالوش حساب يلعب باسمه. لو قفلته: طلابك المسجلين بس بعد ما يسجلوا دخول" },
+            { label: "الترتيب", desc: "بنسبة الإجابات الصح، ولو اتساووا الأسرع، وبعدين النقاط — وبتتحسب أحسن محاولة لكل واحد في الألعاب اللي فيها تقييم (البطاقات والعجلة وصيد الذهب والبرج للتدريب بس). تختار يظهر للطلاب بعد ما يخلصوا ولا لأ، وإنت بتشوفه دايماً في التقرير" },
+          ],
+        },
+        {
+          icon: "🔴", title: "المسابقة الحية", desc: "مسابقة جماعية مباشرة: الأسئلة على شاشتك والإجابة من الموبايل",
+          items: [
+            { label: "البداية", desc: "افتح أي نشاط ← 🔴 مسابقة حية. اعرض الشاشة، والطلاب يدخلوا على /play بالكود أو كود QR من غير حساب" },
+            { label: "النقاط", desc: "الإجابة الصح بتاخد نقط أكتر كل ما تكون أسرع، ومكافأة للإجابات الصح ورا بعض. بعد كل سؤال بيظهر توزيع الإجابات والترتيب، وفي الآخر منصة الأبطال" },
+            { label: "التحكم", desc: "الإجابة بتنكشف لما الوقت يخلص أو كل الطلاب يجاوبوا (أو اضغط اكشف). اضغط على اسم لاعب في شاشة الانتظار عشان تطرده (مثلاً لو كتب اسم غير لائق). 🔊 بيكتم الموسيقى" },
+            { label: "النتايج", desc: "نتايج الطلاب المسجلين بتتحفظ في تقرير النشاط" },
+          ],
+        },
+        {
+          icon: "🎞️", title: "الفيديوهات التفاعلية", desc: "حوّل الدرس (أو الفصل كله) لفيديو تفاعلي — من تاب 🎬 فيديو في الدرس",
+          items: [
+            { label: "🤖 بالذكاء الاصطناعي", desc: "السكريبت من نص الدرس نفسه (أو شرح حر)، وتعليق صوتي لكل مشهد، وأسئلة بين المشاهد" },
+            { label: "🎙️ بودكاست", desc: "سجّل صوتك من المتصفح أو ارفع ملف صوتي — الشرائح بتتغير مع كلامك والأسئلة بتظهر في مكانها" },
+            { label: "📤 رفع فيديو", desc: "فيديو من عندك وجواه أسئلة تفاعلية (بالذكاء الاصطناعي أو تكتبها إنت)" },
+            { label: "عرض بصري لكل المواد", desc: "معادلات كيميائية متحركة، رسم الأعضاء والأجهزة وكل جزء بينوّر، رسم الدوال، خطوط زمنية، خرايط، إعراب الجمل، مقارنات، تعريفات، ورسوم توضيحية" },
+            { label: "📖 عرض نص الدرس", desc: "اعرض نص الدرس نفسه والجملة اللي بتتقال منوّرة — لوحده أو تحت المشاهد" },
+            { label: "المراجعة والنشر", desc: "عدّل الأسئلة والمشاهد والتعليق الصوتي وبعدين انشر — الطلاب مش بيشوفوه غير بعد النشر" },
+          ],
+        },
       {
         icon: "📋", title: "تحتاج مراجعة", desc: "صحّح امتحانات طلابك",
         items: [

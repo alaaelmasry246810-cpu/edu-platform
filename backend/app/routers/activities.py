@@ -1,5 +1,6 @@
 """Games & activities (Wordwall/Quizizz/Blooket/Baamboozle-style) and
 spaced-repetition flashcard study (Quizlet-style)."""
+import secrets
 import uuid
 from datetime import datetime, timedelta
 
@@ -9,7 +10,7 @@ from sqlalchemy import select, or_, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.middleware.auth import get_current_user, check_quota
+from app.middleware.auth import get_current_user, get_optional_user, check_quota
 from app.models.user import User, UserRole
 from app.models.curriculum import Curriculum, Lesson
 from app.models.assignment import StudentGroup
@@ -47,6 +48,11 @@ def _serialize(a: Activity, user: User | None = None, owner_name: str | None = N
         "time_per_question": a.time_per_question,
         "calm_mode": bool(a.calm_mode),
         "game_minutes": a.game_minutes,
+        "link_enabled": bool(a.link_enabled),
+        "allow_guests": a.allow_guests is not False,
+        "leaderboard_visible": a.leaderboard_visible is not False,
+        # Only the owner needs the token (to copy the link).
+        "share_token": a.share_token if user and a.owner_id == user.id else None,
         "is_owner": bool(user and a.owner_id == user.id),
         "owner_name": owner_name,
         "created_at": a.created_at.isoformat() if a.created_at else None,
@@ -141,6 +147,9 @@ class ActivityBody(BaseModel):
     time_per_question: int | None = None
     calm_mode: bool | None = None
     game_minutes: int | None = None
+    link_enabled: bool | None = None
+    allow_guests: bool | None = None
+    leaderboard_visible: bool | None = None
 
 
 def _apply(a: Activity, body: ActivityBody, fields: set[str]) -> None:
@@ -153,13 +162,15 @@ def _apply(a: Activity, body: ActivityBody, fields: set[str]) -> None:
         a.items = activity_service.clean_items(body.items)
     if "template" in fields and body.template in activity_service.TEMPLATES:
         a.template = body.template
-    for name in ("is_public", "assigned", "power_ups", "calm_mode"):
+    for name in ("is_public", "assigned", "power_ups", "calm_mode", "link_enabled", "allow_guests", "leaderboard_visible"):
         if name in fields and getattr(body, name) is not None:
             setattr(a, name, getattr(body, name))
     if "group_id" in fields:
         a.group_id = body.group_id
     if "due_at" in fields:
         a.due_at = body.due_at
+    if a.link_enabled and not a.share_token:
+        a.share_token = secrets.token_urlsafe(9)
     if "game_minutes" in fields:
         a.game_minutes = min(max(body.game_minutes, 1), 60) if body.game_minutes else None
     if "time_per_question" in fields and body.time_per_question:
@@ -230,6 +241,89 @@ async def _check_group(group_id: uuid.UUID, user: User, db: AsyncSession) -> Non
         raise HTTPException(status_code=404, detail="Group not found")
 
 
+# ── Share link (anyone with the link, as the teacher allows) ─
+
+async def _shared_activity(token: str, user: User | None, db: AsyncSession) -> Activity:
+    a = (await db.execute(select(Activity).where(Activity.share_token == token))).scalar_one_or_none()
+    if not a or not a.link_enabled:
+        raise HTTPException(status_code=404, detail="الرابط ده مش متاح — اسأل المدرس")
+    if a.allow_guests is False and not (
+        user and (user.id == a.owner_id or user.role == UserRole.ADMIN or user.teacher_id == a.owner_id)
+    ):
+        raise HTTPException(status_code=403, detail="النشاط ده لطلاب المدرس المسجلين بس — سجّل دخولك الأول")
+    return a
+
+
+@router.get("/shared/{token}")
+async def get_shared(token: str, user: User | None = Depends(get_optional_user), db: AsyncSession = Depends(get_db)):
+    a = await _shared_activity(token, user, db)
+    owner = await db.get(User, a.owner_id)
+    return {**_serialize(a, user, owner.full_name if owner else None), "signed_in_as": user.full_name if user else None}
+
+
+class SharedAttemptBody(BaseModel):
+    template: str
+    score: int = 0
+    correct: int = 0
+    total: int = 0
+    duration_sec: float = 0
+    answers: list[dict] = []
+    guest_name: str | None = None
+    guest_key: str | None = None
+
+
+@router.post("/shared/{token}/attempts", status_code=201)
+async def save_shared_attempt(token: str, body: SharedAttemptBody, user: User | None = Depends(get_optional_user), db: AsyncSession = Depends(get_db)):
+    a = await _shared_activity(token, user, db)
+    guest_name = (body.guest_name or "").strip()[:40]
+    if not user and not guest_name:
+        raise HTTPException(status_code=422, detail="اكتب اسمك الأول")
+    await _record_attempt(a, body, db, user=user, guest_name=None if user else guest_name, guest_key=None if user else (body.guest_key or "")[:64] or None)
+    return {"message": "saved"}
+
+
+@router.get("/shared/{token}/leaderboard")
+async def shared_leaderboard(token: str, guest_key: str | None = None, user: User | None = Depends(get_optional_user), db: AsyncSession = Depends(get_db)):
+    a = await _shared_activity(token, user, db)
+    if a.leaderboard_visible is False and not (user and user.id == a.owner_id):
+        raise HTTPException(status_code=403, detail="المدرس مخبّي الترتيب")
+    return await _leaderboard(a, db, user, guest_key)
+
+
+# Only templates that actually check answers count towards the ranking —
+# flashcards are self-assessed, gold quest/tower scores depend on luck or
+# their own scale, the wheel/team board aren't individual.
+RANKED_TEMPLATES = {"quiz", "truefalse", "match", "anagram", "crossword", "spellit", "live"}
+
+
+async def _leaderboard(a: Activity, db: AsyncSession, me: User | None, guest_key: str | None = None) -> dict:
+    """Each participant's best ranked attempt — higher share of correct answers
+    first, then the faster time, then more points (points differ in scale
+    between games, the percentage and time don't)."""
+    rows = (await db.execute(
+        select(ActivityAttempt, User.full_name).outerjoin(User, User.id == ActivityAttempt.user_id)
+        .where(ActivityAttempt.activity_id == a.id, ActivityAttempt.template.in_(RANKED_TEMPLATES))
+    )).all()
+    best: dict[str, tuple] = {}
+    for att, name in rows:
+        key = f"u:{att.user_id}" if att.user_id else f"g:{att.guest_key or att.guest_name}"
+        pct = att.correct / att.total if att.total else 0
+        rank_key = (-pct, att.duration_sec, -att.score)
+        if key not in best or rank_key < best[key][0]:
+            best[key] = (rank_key, att, name)
+    ordered = sorted(best.values(), key=lambda x: x[0])
+    entries = []
+    for pos, (_, att, name) in enumerate(ordered, start=1):
+        is_me = bool((me and att.user_id == me.id) or (guest_key and att.guest_key == guest_key))
+        entries.append({
+            "rank": pos, "name": name or att.guest_name or "—", "guest": att.user_id is None,
+            "score": att.score, "correct": att.correct, "total": att.total,
+            "pct": round(100 * att.correct / att.total) if att.total else 0,
+            "duration_sec": round(att.duration_sec, 1), "me": is_me,
+        })
+    return {"title": a.title, "entries": entries[:100], "me": next((e for e in entries if e["me"]), None), "players": len(entries)}
+
+
 # ── One activity ─────────────────────────────────────────────
 
 @router.get("/{activity_id}")
@@ -277,6 +371,24 @@ async def delete_activity(activity_id: uuid.UUID, user: User = Depends(get_curre
     return {"message": "تم حذف النشاط"}
 
 
+@router.post("/{activity_id}/share/regenerate")
+async def regenerate_share_link(activity_id: uuid.UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """New link — the old one stops working immediately."""
+    _require_teacher(user)
+    a = await _get_activity(activity_id, user, db, manage=True)
+    a.share_token = secrets.token_urlsafe(9)
+    await db.commit()
+    return _serialize(a, user)
+
+
+@router.get("/{activity_id}/leaderboard")
+async def activity_leaderboard(activity_id: uuid.UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    a = await _get_activity(activity_id, user, db)
+    if a.leaderboard_visible is False and a.owner_id != user.id and user.role != UserRole.ADMIN:
+        raise HTTPException(status_code=403, detail="المدرس مخبّي الترتيب")
+    return await _leaderboard(a, db, user)
+
+
 @router.post("/{activity_id}/duplicate", status_code=201)
 async def duplicate_activity(activity_id: uuid.UUID, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     """Copy an activity (e.g. from the public library) into my own, to edit."""
@@ -306,19 +418,24 @@ class AttemptBody(BaseModel):
 @router.post("/{activity_id}/attempts", status_code=201)
 async def save_attempt(activity_id: uuid.UUID, body: AttemptBody, user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     a = await _get_activity(activity_id, user, db)
+    await _record_attempt(a, body, db, user=user)
+    return {"message": "saved"}
+
+
+async def _record_attempt(a: Activity, body, db: AsyncSession, *, user: User | None, guest_name: str | None = None, guest_key: str | None = None) -> None:
     n = len(a.items or [])
     answers = [
         {"i": int(x["i"]), "correct": bool(x.get("correct")), "choice": str(x.get("choice") or "")[:200], "ms": int(x.get("ms") or 0)}
         for x in body.answers if isinstance(x, dict) and str(x.get("i", "")).lstrip("-").isdigit() and 0 <= int(x["i"]) < n
     ][:500]
     db.add(ActivityAttempt(
-        activity_id=a.id, user_id=user.id, template=body.template[:30],
-        score=max(0, body.score), correct=max(0, body.correct), total=max(0, body.total),
-        duration_sec=max(0.0, body.duration_sec), answers=answers,
+        activity_id=a.id, user_id=user.id if user else None, guest_name=guest_name, guest_key=guest_key,
+        template=body.template[:30],
+        score=min(max(0, body.score), 10_000_000), correct=max(0, body.correct), total=max(0, body.total),
+        duration_sec=min(max(0.0, body.duration_sec), 86_400.0), answers=answers,
     ))
     a.plays = (a.plays or 0) + 1
     await db.commit()
-    return {"message": "saved"}
 
 
 @router.get("/{activity_id}/report")
@@ -327,14 +444,19 @@ async def activity_report(activity_id: uuid.UUID, user: User = Depends(get_curre
     _require_teacher(user)
     a = await _get_activity(activity_id, user, db, manage=True)
     rows = (await db.execute(
-        select(ActivityAttempt, User.full_name).join(User, User.id == ActivityAttempt.user_id)
+        select(ActivityAttempt, User.full_name).outerjoin(User, User.id == ActivityAttempt.user_id)
         .where(ActivityAttempt.activity_id == a.id).order_by(ActivityAttempt.created_at)
     )).all()
     students: dict[str, dict] = {}
     per_item = [{"q": it["q"], "a": it["a"], "right": 0, "wrong": 0, "wrong_choices": {}} for it in (a.items or [])]
     for att, name in rows:
-        s = students.setdefault(str(att.user_id), {"name": name, "attempts": 0, "best_score": 0, "best_pct": 0, "last_at": None})
+        key = str(att.user_id) if att.user_id else f"g:{att.guest_key or att.guest_name}"
+        s = students.setdefault(key, {"name": name or att.guest_name or "—", "guest": att.user_id is None,
+                                      "attempts": 0, "best_score": 0, "best_pct": 0, "best_time": None, "last_at": None})
         s["attempts"] += 1
+        # Time of the best-scoring attempt (faster wins a tie), as on the leaderboard.
+        if s["best_time"] is None or att.score > s["best_score"] or (att.score == s["best_score"] and att.duration_sec < s["best_time"]):
+            s["best_time"] = round(att.duration_sec, 1)
         s["best_score"] = max(s["best_score"], att.score)
         if att.total:
             s["best_pct"] = max(s["best_pct"], round(100 * att.correct / att.total))
@@ -355,7 +477,7 @@ async def activity_report(activity_id: uuid.UUID, user: User = Depends(get_curre
         del it["wrong_choices"]
     return {
         "activity": {"id": str(a.id), "title": a.title},
-        "students": sorted(students.values(), key=lambda s: -s["best_pct"]),
+        "students": sorted(students.values(), key=lambda s: (-s["best_pct"], s["best_time"] or 0)),
         "items": per_item,
         "total_attempts": len(rows),
     }

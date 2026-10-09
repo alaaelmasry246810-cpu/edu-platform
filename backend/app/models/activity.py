@@ -44,18 +44,32 @@ class Activity(Base):
     # Hard time limit (minutes) for game templates so play never crowds out learning; null = none.
     game_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
+    # Share link (/a/<share_token>), fully controlled by the teacher: on/off,
+    # open to anyone (guests play under a name) or only the teacher's own
+    # students, and whether players can see the leaderboard. Regenerating the
+    # token kills the old link.
+    link_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    share_token: Mapped[str | None] = mapped_column(String(32), nullable=True, unique=True, index=True)
+    allow_guests: Mapped[bool] = mapped_column(Boolean, default=True)
+    leaderboard_visible: Mapped[bool] = mapped_column(Boolean, default=True)
+
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class ActivityAttempt(Base):
-    """One finished play of an activity by a student.
+    """One finished play of an activity — by a signed-in user, or by a guest
+    (user_id null, guest_name set) who opened the teacher's share link.
     answers: [{i, correct, choice, ms}] — i is the item index."""
     __tablename__ = "activity_attempts"
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     activity_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("activities.id", ondelete="CASCADE"), nullable=False, index=True)
-    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False, index=True)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True, index=True)
+    guest_name: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    # Groups one guest's attempts (kept in their browser) so the leaderboard
+    # shows each guest once even if two pick the same name.
+    guest_key: Mapped[str | None] = mapped_column(String(64), nullable=True)
     template: Mapped[str] = mapped_column(String(30), nullable=False)
     score: Mapped[int] = mapped_column(Integer, default=0)
     correct: Mapped[int] = mapped_column(Integer, default=0)

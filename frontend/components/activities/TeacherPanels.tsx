@@ -5,6 +5,8 @@ import toast from "react-hot-toast";
 import { activitiesAPI, assignmentAPI, curriculumAPI } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import { type Item, type TemplateKey, TEMPLATE_ICONS, SOLO_TEMPLATES } from "./shared";
+import { QRCodeSVG } from "qrcode.react";
+import { LeaderboardPanel, fmtTime } from "./Leaderboard";
 
 const inputCls = "w-full border border-slate-300 dark:border-slate-600 dark:bg-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
 
@@ -261,6 +263,7 @@ export function ReportPanel({ activityId }: { activityId: string }) {
 
   return (
     <div className="space-y-6">
+      <LeaderboardPanel load={() => activitiesAPI.leaderboard(activityId)} />
       <div className="grid sm:grid-cols-3 gap-3">
         <Stat label={t("games.report.attempts")} value={report.total_attempts} />
         <Stat label={t("games.report.students")} value={report.students.length} />
@@ -280,13 +283,14 @@ export function ReportPanel({ activityId }: { activityId: string }) {
           <table className="w-full text-sm">
             <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500"><tr>
               <th className="p-2 text-start">{t("games.report.student")}</th><th className="p-2">{t("games.report.best")}</th>
-              <th className="p-2">{t("games.report.score")}</th><th className="p-2">{t("games.report.attempts")}</th></tr></thead>
+              <th className="p-2">{t("games.report.score")}</th><th className="p-2">{t("games.report.time")}</th><th className="p-2">{t("games.report.attempts")}</th></tr></thead>
             <tbody>
               {report.students.map((s: any, k: number) => (
                 <tr key={k} className="border-t border-slate-100 dark:border-slate-800">
-                  <td className="p-2 font-medium">{s.name}</td>
+                  <td className="p-2 font-medium">{s.name}{s.guest && <span className="ms-1 text-[10px] text-slate-400">{t("games.leaderboard.guest")}</span>}</td>
                   <td className="p-2 text-center"><span className={clsx("font-bold", s.best_pct >= 75 ? "text-green-600" : s.best_pct >= 50 ? "text-amber-600" : "text-red-500")}>{s.best_pct}%</span></td>
                   <td className="p-2 text-center">{s.best_score}</td>
+                  <td className="p-2 text-center tabular-nums">{s.best_time != null ? fmtTime(s.best_time) : "—"}</td>
                   <td className="p-2 text-center">{s.attempts}</td>
                 </tr>
               ))}
@@ -316,6 +320,69 @@ function Stat({ label, value }: { label: string; value: any }) {
     <div className="rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 text-center">
       <p className="text-2xl font-extrabold text-slate-800 dark:text-slate-100">{value}</p>
       <p className="text-xs text-slate-500">{label}</p>
+    </div>
+  );
+}
+
+// ── Share link (the teacher controls who can open it) ────────
+
+export function SharePanel({ activity, onSaved }: { activity: any; onSaved: (a: any) => void }) {
+  const { t } = useI18n();
+  const [busy, setBusy] = useState(false);
+  const link = activity.share_token && typeof window !== "undefined" ? `${window.location.origin}/a/${activity.share_token}` : "";
+
+  const update = async (patch: object, ok?: string) => {
+    setBusy(true);
+    try {
+      const { data } = await activitiesAPI.update(activity.id, patch);
+      onSaved(data);
+      if (ok) toast.success(ok);
+    } catch { toast.error(t("games.editor.error")); } finally { setBusy(false); }
+  };
+  const regenerate = async () => {
+    if (!confirm(t("games.share.regenerateConfirm"))) return;
+    setBusy(true);
+    try { const { data } = await activitiesAPI.regenerateLink(activity.id); onSaved(data); toast.success(t("games.share.regenerated")); }
+    catch { toast.error(t("games.editor.error")); } finally { setBusy(false); }
+  };
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(link); toast.success(t("games.share.copied")); }
+    catch { window.prompt(t("games.share.copyManually"), link); }
+  };
+
+  const Toggle = ({ checked, onChange, title, hint }: { checked: boolean; onChange: (v: boolean) => void; title: string; hint: string }) => (
+    <label className={clsx("flex items-start gap-3 rounded-2xl border-2 p-4 cursor-pointer", checked ? "border-blue-400 bg-blue-50/50 dark:bg-blue-900/10" : "border-slate-200 dark:border-slate-700")}>
+      <input type="checkbox" checked={checked} disabled={busy} onChange={(e) => onChange(e.target.checked)} className="w-5 h-5 mt-0.5" />
+      <div><p className="font-bold text-slate-800 dark:text-slate-100">{title}</p><p className="text-xs text-slate-500">{hint}</p></div>
+    </label>
+  );
+
+  return (
+    <div className="max-w-2xl space-y-4">
+      <Toggle checked={!!activity.link_enabled} onChange={(v) => update({ link_enabled: v }, v ? t("games.share.enabled") : t("games.share.disabled"))}
+        title={`🔗 ${t("games.share.toggle")}`} hint={t("games.share.toggleHint")} />
+
+      {activity.link_enabled && link && (
+        <>
+          <div className="rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 flex flex-wrap items-center gap-4">
+            <QRCodeSVG value={link} size={112} className="shrink-0 bg-white p-1 rounded" />
+            <div className="flex-1 min-w-[14rem] space-y-2">
+              <input readOnly value={link} dir="ltr" onFocus={(e) => e.target.select()} className={inputCls + " font-mono text-xs"} />
+              <div className="flex flex-wrap gap-2">
+                <button onClick={copy} className="px-4 py-2 rounded-xl bg-blue-600 text-white text-sm font-bold">📋 {t("games.share.copy")}</button>
+                <a href={`https://wa.me/?text=${encodeURIComponent(`${activity.title}\n${link}`)}`} target="_blank" rel="noreferrer"
+                  className="px-4 py-2 rounded-xl bg-green-600 text-white text-sm font-bold">💬 {t("games.share.whatsapp")}</a>
+                <button onClick={regenerate} disabled={busy} className="px-4 py-2 rounded-xl border-2 border-slate-300 dark:border-slate-600 text-sm font-semibold text-slate-600 dark:text-slate-300">🔄 {t("games.share.regenerate")}</button>
+              </div>
+            </div>
+          </div>
+          <Toggle checked={activity.allow_guests !== false} onChange={(v) => update({ allow_guests: v })}
+            title={`👥 ${t("games.share.guests")}`} hint={t("games.share.guestsHint")} />
+        </>
+      )}
+
+      <Toggle checked={activity.leaderboard_visible !== false} onChange={(v) => update({ leaderboard_visible: v })}
+        title={`🏆 ${t("games.share.leaderboard")}`} hint={t("games.share.leaderboardHint")} />
     </div>
   );
 }

@@ -211,6 +211,11 @@ export const activitiesAPI = {
   fromFlashcards:  (lessonId: string)         => api.get(`/activities/from-flashcards/${lessonId}`),
   saveAttempt:     (id: string, data: object) => api.post(`/activities/${id}/attempts`, data),
   report:          (id: string)               => api.get(`/activities/${id}/report`),
+  leaderboard:     (id: string)               => api.get(`/activities/${id}/leaderboard`),
+  regenerateLink:  (id: string)               => api.post(`/activities/${id}/share/regenerate`),
+  shared:          (token: string)            => api.get(`/activities/shared/${token}`),
+  sharedAttempt:   (token: string, data: object) => api.post(`/activities/shared/${token}/attempts`, data),
+  sharedLeaderboard: (token: string, guestKey?: string) => api.get(`/activities/shared/${token}/leaderboard`, { params: guestKey ? { guest_key: guestKey } : {} }),
 };
 
 export const liveAPI = {

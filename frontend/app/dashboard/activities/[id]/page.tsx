@@ -5,6 +5,7 @@ import Link from "next/link";
 import { activitiesAPI } from "@/lib/api";
 import { useI18n } from "@/lib/i18n";
 import ActivityPlayer from "@/components/activities/ActivityPlayer";
+import { LeaderboardPanel } from "@/components/activities/Leaderboard";
 
 export default function StudentActivity() {
   const { id } = useParams<{ id: string }>();
@@ -20,7 +21,11 @@ export default function StudentActivity() {
       <Link href="/dashboard/activities" className="text-sm text-slate-500 hover:underline">← {t("games.student.title")}</Link>
       <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{activity.title}</h1>
       {activity.description && <p className="text-slate-500">{activity.description}</p>}
-      <ActivityPlayer activity={activity} saveAttempts />
+      <ActivityPlayer
+        activity={activity}
+        saveAttempts
+        resultExtra={(savedAt) => activity.leaderboard_visible && <LeaderboardPanel refreshKey={savedAt} load={() => activitiesAPI.leaderboard(id)} />}
+      />
     </div>
   );
 }

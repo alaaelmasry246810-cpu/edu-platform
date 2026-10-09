@@ -98,7 +98,8 @@
     "play": "Play",
     "edit": "Edit",
     "assign": "Assign",
-    "report": "Report"
+    "report": "Report",
+    "share": "Share"
   },
   "list": {
     "title": "Games & activities",
@@ -175,7 +176,8 @@
     "byQuestion": "By question",
     "student": "Student",
     "best": "Best %",
-    "score": "Top points"
+    "score": "Top points",
+    "time": "Time"
   },
   "live": {
     "start": "Live game",
@@ -234,5 +236,41 @@
   },
   "tower": {
     "height": "Tower height: {n} / {goal}"
+  },
+  "leaderboard": {
+    "title": "Leaderboard",
+    "empty": "Nobody has played yet",
+    "you": "you",
+    "guest": "guest",
+    "name": "Name",
+    "correct": "Score",
+    "time": "Time",
+    "score": "Points",
+    "players": "{n} players",
+    "yourRank": "You're #{n} of {total}",
+    "rule": "Ranked by % correct, then the faster time, then points — each player's best attempt in the assessed games (quiz, true/false, match, anagram, crossword, spell it, live game). Flashcards, wheel, gold quest and tower are for practice and don't count."
+  },
+  "share": {
+    "toggle": "Share link",
+    "toggleHint": "Anyone with the link can open and play the activity — you can turn it on or off any time",
+    "enabled": "Link enabled",
+    "disabled": "Link disabled — nobody can open it now",
+    "copy": "Copy link",
+    "copied": "Link copied",
+    "copyManually": "Copy the link:",
+    "whatsapp": "Send on WhatsApp",
+    "regenerate": "New link",
+    "regenerateConfirm": "A new link will be created and the old one will stop working. Continue?",
+    "regenerated": "New link created",
+    "guests": "Open to anyone (no account needed)",
+    "guestsHint": "When off, the link only works for your registered students after they sign in",
+    "leaderboard": "Show the leaderboard to players",
+    "leaderboardHint": "After finishing, players see their rank (% correct, then speed). You always see it in the report",
+    "enterName": "Enter your name for the leaderboard",
+    "start": "Start",
+    "playingAs": "playing as {name}",
+    "changeName": "change name",
+    "orLogin": "Have an account?",
+    "login": "Sign in"
   }
 }

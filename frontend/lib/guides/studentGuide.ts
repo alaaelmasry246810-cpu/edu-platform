@@ -31,6 +31,31 @@ export function getStudentGuide(locale: "ar" | "en"): { title: string; subtitle:
           ],
         },
         {
+          icon: "🎮", title: "Games & Activities", desc: "Activities your teacher assigned or sent you a link to",
+          items: [
+            { label: "Play your way", desc: "Open an activity and switch between games (quiz, match, crossword, gold quest, tower…) without changing the questions" },
+            { label: "Power-ups", desc: "In the quiz: remove two answers, double points, or freeze time — once each. 🔊 reads the question aloud" },
+            { label: "Leaderboard", desc: "If your teacher shows it, after finishing you see your rank by % correct, then speed — your best attempt in the assessed games counts" },
+            { label: "Teacher's link", desc: "A link from your teacher opens the activity directly; if you're not signed in you can play under your name (if your teacher allows)" },
+            { label: "🔴 Live game", desc: "Games & Activities → Join a live game (or go to /play), enter the PIN on the class screen and your name, then answer from your phone — faster correct answers score more" },
+          ],
+        },
+        {
+          icon: "🃏", title: "Flashcards", desc: "Each lesson's flashcards tab has four study modes",
+          items: [
+            { label: "🧠 Learn (spaced repetition)", desc: "Cards you miss come back today; cards you know come back after 1, 3, 7 and 16 days until they're mastered" },
+            { label: "🔗 Match and ⌨️ Write", desc: "A timed matching game, and a test where you type the answer" },
+            { label: "Offline", desc: "Activities and flashcards you've opened before keep working without internet" },
+          ],
+        },
+        {
+          icon: "🎞️", title: "Interactive Videos", desc: "In the lesson's 🎬 Video tab",
+          items: [
+            { label: "Questions inside", desc: "The video stops at each question; you see if you're right and why. Skipping ahead doesn't skip a question" },
+            { label: "Views", desc: "Switch between scenes, the lesson text with the spoken sentence lit up, or both. Click any sentence to jump to that moment" },
+          ],
+        },
+        {
           icon: "📊", title: "Grades & Progress", desc: "Track your results over time",
           items: [
             { label: "My Grades", desc: "See every exam attempt, its score, and whether your teacher approved it" },
@@ -93,6 +118,31 @@ export function getStudentGuide(locale: "ar" | "en"): { title: string; subtitle:
           { label: "المحاولات", desc: "محاولة واحدة إلا لو معلمك سمح بمحاولات متعددة" },
         ],
       },
+        {
+          icon: "🎮", title: "الأنشطة والألعاب", desc: "الأنشطة اللي مدرسك اسندها لك أو بعتلك رابطها",
+          items: [
+            { label: "العب بطريقتك", desc: "افتح النشاط وبدّل بين الألعاب (مسابقة، توصيل، كلمات متقاطعة، صيد الذهب، البرج…) من غير ما الأسئلة تتغير" },
+            { label: "المساعدات", desc: "في المسابقة: احذف إجابتين، نقاط مضاعفة، أو وقّف الوقت — كل واحدة مرة. و🔊 بيقرالك السؤال بصوت" },
+            { label: "الترتيب", desc: "لو مدرسك مفعّله، بعد ما تخلص بتشوف ترتيبك بنسبة الإجابات الصح وبعدين السرعة — وبتتحسب أحسن محاولة ليك في الألعاب اللي فيها تقييم" },
+            { label: "رابط المدرس", desc: "الرابط اللي مدرسك يبعته بيفتح النشاط على طول، ولو مش مسجل دخول تقدر تلعب باسمك (لو المدرس سامح)" },
+            { label: "🔴 المسابقة الحية", desc: "الأنشطة والألعاب ← ادخل مسابقة حية (أو روح /play)، اكتب الكود اللي على شاشة الفصل واسمك، وجاوب من موبايلك — الإجابة الصح الأسرع بتاخد نقط أكتر" },
+          ],
+        },
+        {
+          icon: "🃏", title: "الفلاش كارد", desc: "تاب الفلاش كارد في كل درس فيه 4 طرق مذاكرة",
+          items: [
+            { label: "🧠 تعلّم (تكرار متباعد)", desc: "البطاقة اللي تنساها بترجعلك النهارده، واللي تعرفها بترجع بعد يوم ثم 3 أيام ثم أسبوع ثم 16 يوم لحد ما تتحفظ" },
+            { label: "🔗 توصيل و⌨️ اكتب", desc: "لعبة توصيل بالوقت، واختبار تكتب فيه الإجابة" },
+            { label: "من غير نت", desc: "الأنشطة والبطاقات اللي فتحتها قبل كده بتشتغل من غير إنترنت" },
+          ],
+        },
+        {
+          icon: "🎞️", title: "الفيديوهات التفاعلية", desc: "في تاب 🎬 فيديو في الدرس",
+          items: [
+            { label: "أسئلة جوه الفيديو", desc: "الفيديو بيقف عند كل سؤال وبتعرف إجابتك صح ولا غلط وليه. والتقديم مش بيعدّي سؤال" },
+            { label: "طرق العرض", desc: "بدّل بين المشاهد، أو نص الدرس والجملة اللي بتتقال منوّرة، أو الاتنين. واضغط على أي جملة يروح للحظة اللي اتقالت فيها" },
+          ],
+        },
       {
         icon: "📊", title: "درجاتي وتقدمي", desc: "تابع نتائجك على مر الوقت",
         items: [

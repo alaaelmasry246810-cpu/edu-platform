@@ -9,32 +9,21 @@ import uuid
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.security import OAuth2PasswordBearer
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.middleware.auth import get_current_user
+from app.middleware.auth import get_current_user, get_optional_user
 from app.models.user import User, UserRole
 from app.models.activity import Activity, ActivityAttempt, LiveSession, LivePlayer
 from app.services import activity_service
 
 router = APIRouter(prefix="/live", tags=["Live games"])
 
-_optional_oauth = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
 _GRACE = 3.0             # seconds of network slack after the timer ends (slow mobile data)
 _SESSION_TTL = timedelta(hours=12)
 _MAX_PLAYERS = 300
-
-
-async def _optional_user(token: str | None = Depends(_optional_oauth), db: AsyncSession = Depends(get_db)) -> User | None:
-    if not token:
-        return None
-    try:
-        return await get_current_user(token, db)
-    except HTTPException:
-        return None
 
 
 def _elapsed(s: LiveSession) -> float:
@@ -191,7 +180,7 @@ class JoinBody(BaseModel):
 
 
 @router.post("/join")
-async def join(body: JoinBody, user: User | None = Depends(_optional_user), db: AsyncSession = Depends(get_db)):
+async def join(body: JoinBody, user: User | None = Depends(get_optional_user), db: AsyncSession = Depends(get_db)):
     s = (await db.execute(
         select(LiveSession).where(
             LiveSession.pin == body.pin.strip(), LiveSession.status != "ended",
