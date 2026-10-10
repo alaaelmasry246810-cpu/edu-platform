@@ -455,6 +455,7 @@ async def get_structure(
             "status": curriculum.status,
             "total_pages": curriculum.total_pages,
             "content_type": curriculum.content_type,
+            "error_message": curriculum.error_message,
         },
         "units": tree
     }
