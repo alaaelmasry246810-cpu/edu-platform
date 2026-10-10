@@ -30,8 +30,9 @@ async def get_db() -> AsyncSession:
             await session.close()
 
 
-async def init_db():
-    async with engine.begin() as conn:
+async def init_db(target=None):
+    """Create/upgrade the schema — on the app database, or on `target` (an engine)."""
+    async with (target or engine).begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
         # create_all never alters existing tables — add columns introduced later.
         await conn.execute(text("ALTER TABLE lessons ADD COLUMN IF NOT EXISTS content_text TEXT"))
