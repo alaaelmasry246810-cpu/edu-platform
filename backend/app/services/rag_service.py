@@ -1,11 +1,10 @@
 """RAG Service — vector storage, retrieval, and AI generation with zero hallucinations."""
 import uuid
 from typing import Any
-from openai import AsyncOpenAI
 from app.config import settings
 from app.services import qdrant_rest
 
-client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+from app.services.ai_client import client
 
 # Returned instead of generated text when the curriculum content couldn't be
 # retrieved (e.g. the vector store is down). Callers must never cache it.

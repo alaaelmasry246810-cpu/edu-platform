@@ -8,16 +8,26 @@ Three ways in (see InteractiveVideo.source):
   upload   — the teacher's video is transcribed when small enough; AI adds timed
              questions (or untimed ones from the curriculum content when it isn't).
 """
+import asyncio
 import json
+import logging
 import uuid
 from pathlib import Path
 
 from app.config import settings
 from app.services.rag_service import client, retrieve_full_scope
-from app.services import video_visuals
+from app.services import ai_client, video_visuals
+
+logger = logging.getLogger(__name__)
 
 TTS_VOICES = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
-_WHISPER_MAX_BYTES = 25 * 1024 * 1024  # OpenAI transcription upload limit
+# The same six voice names on the free edge-tts voices (used unless AI_PROVIDER=openai).
+_EDGE_VOICES = {
+    "nova": "ar-EG-SalmaNeural", "onyx": "ar-EG-ShakirNeural",
+    "shimmer": "ar-SA-ZariyahNeural", "echo": "ar-SA-HamedNeural",
+    "alloy": "ar-JO-SanaNeural", "fable": "ar-AE-HamdanNeural",
+}
+_WHISPER_MAX_BYTES = 25 * 1024 * 1024  # OpenAI / Groq transcription upload limit
 _INTERACTION_TYPES = {"mcq", "true_false"}
 
 _RULES = """قواعد صارمة:
@@ -160,13 +170,20 @@ after_scene هو رقم المشهد (يبدأ من 0) الذي يظهر الس�
 
 
 async def synthesize(text: str, voice: str, out_path: Path) -> None:
-    resp = await client.audio.speech.create(
-        model="tts-1",
-        voice=voice if voice in TTS_VOICES else "nova",
-        input=text[:4000],
-        response_format="mp3",
-    )
+    voice = voice if voice in TTS_VOICES else "nova"
     out_path.parent.mkdir(parents=True, exist_ok=True)
+    if ai_client.gemini():
+        try:
+            import edge_tts  # free Microsoft Edge voices, no key
+            await asyncio.wait_for(edge_tts.Communicate(text[:4000], _EDGE_VOICES[voice]).save(str(out_path)), 60)
+        except Exception:
+            # Microsoft blocks this endpoint from time to time — fall back to
+            # Google Translate's voice (one Arabic voice, also free, no key).
+            logger.warning("edge-tts failed, using gTTS", exc_info=True)
+            from gtts import gTTS
+            await asyncio.to_thread(gTTS(text[:4000], lang="ar").save, str(out_path))
+        return
+    resp = await client.audio.speech.create(model="tts-1", voice=voice, input=text[:4000], response_format="mp3")
     out_path.write_bytes(resp.content)
 
 
@@ -176,9 +193,10 @@ async def transcribe(path: Path) -> list[dict] | None:
     """Timestamped transcript segments, or None when the file is over Whisper's limit."""
     if path.stat().st_size > _WHISPER_MAX_BYTES:
         return None
+    stt, model = ai_client.transcriber()
     with path.open("rb") as f:
-        resp = await client.audio.transcriptions.create(
-            model="whisper-1",
+        resp = await stt.audio.transcriptions.create(
+            model=model,
             file=f,
             response_format="verbose_json",
             timestamp_granularities=["segment"],

@@ -8,7 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel, EmailStr
 from datetime import datetime
-from openai import AsyncOpenAI
 
 from app.database import get_db
 from app.config import settings
@@ -18,7 +17,7 @@ from app.models.exam import QuizAttempt, TeacherEvaluation, AttemptStatus, ExamT
 from app.middleware.auth import get_current_user, hash_password
 from app.services.notification_service import notify
 
-_ai_client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+from app.services.ai_client import client as _ai_client
 
 router = APIRouter(prefix="/teacher", tags=["Teacher"])
 

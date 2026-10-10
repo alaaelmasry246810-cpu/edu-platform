@@ -5,11 +5,9 @@ import re
 from pathlib import Path
 from typing import NamedTuple
 
-from openai import AsyncOpenAI
-
 from app.config import settings
 
-client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+from app.services.ai_client import client
 
 
 class PageText(NamedTuple):

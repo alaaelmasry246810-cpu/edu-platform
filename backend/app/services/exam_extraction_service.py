@@ -9,12 +9,11 @@ context.
 import json
 import logging
 
-from openai import AsyncOpenAI
 
 from app.config import settings
 
 logger = logging.getLogger(__name__)
-client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+from app.services.ai_client import client
 
 VALID_TYPES = {"mcq", "true_false", "fill_blank", "why", "essay", "problem"}
 

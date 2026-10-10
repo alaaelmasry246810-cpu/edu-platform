@@ -456,9 +456,7 @@ SCORE: [الرقم]
 REASON: [التبرير]"""
 
     try:
-        from openai import AsyncOpenAI
-        from app.config import settings as _settings
-        _ai = AsyncOpenAI(api_key=_settings.OPENAI_API_KEY)
+        from app.services.ai_client import client as _ai
         resp = await _ai.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
@@ -491,9 +489,7 @@ async def _ai_explain_mistake(question_text: str, student_answer: str, correct_a
 
 في جملة واحدة قصيرة بالعربية، وضّح للطالب ليه إجابته دي غلط بالتحديد."""
     try:
-        from openai import AsyncOpenAI
-        from app.config import settings as _settings
-        _ai = AsyncOpenAI(api_key=_settings.OPENAI_API_KEY)
+        from app.services.ai_client import client as _ai
         resp = await _ai.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
@@ -896,9 +892,7 @@ async def get_exam_hint(
             "أعطِ الطالب تلميحاً يرشده نحو الإجابة دون ذكرها مباشرة. اكتب بالعربية. لا تزيد عن 60 كلمة."
         )
 
-    from openai import AsyncOpenAI
-    from app.config import settings as _settings
-    _ai = AsyncOpenAI(api_key=_settings.OPENAI_API_KEY)
+    from app.services.ai_client import client as _ai
     response = await _ai.chat.completions.create(
         model="gpt-4o-mini",
         messages=[

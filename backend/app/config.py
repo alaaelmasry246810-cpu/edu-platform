@@ -28,8 +28,15 @@ class Settings(BaseSettings):
     # Redis
     REDIS_URL: str = "redis://localhost:6379"
 
-    # AI
+    # AI — provider: "openai" or "gemini" (free tier; see services/ai_client.py)
+    AI_PROVIDER: str = "openai"
     OPENAI_API_KEY: str = ""
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-flash-latest"
+    GEMINI_FAST_MODEL: str = "gemini-flash-lite-latest"
+    GEMINI_EMBEDDING_MODEL: str = "gemini-embedding-001"
+    GEMINI_REASONING_EFFORT: str = "low"
+    GROQ_API_KEY: str = ""  # free Whisper speech-to-text (podcasts / uploaded videos)
     AI_MODEL: str = "gpt-4o"
     EMBEDDING_MODEL: str = "text-embedding-3-large"
     EMBEDDING_DIMENSION: int = 3072  # text-embedding-3-large
