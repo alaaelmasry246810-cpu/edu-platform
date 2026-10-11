@@ -48,12 +48,14 @@ export function getAdminGuide(locale: "ar" | "en"): { title: string; subtitle: s
           items: [
             { label: "Model", desc: "Switch between GPT-4o, GPT-4o Mini, Claude 3.5 Sonnet, or Gemini 1.5 Pro" },
             { label: "RAG tuning", desc: "Top-K, chunk size, chunk overlap, and creativity (temperature)" },
+            { label: "Free AI (Gemini)", desc: "The server can run all AI on free services: Google Gemini (explanations, questions, scanned pages, search, narration voices) and Groq (turning teachers' recordings into text). It's chosen on the server (AI_PROVIDER), and while it's on the model choice above doesn't apply. Free limits: slower processing for big curricula and ~40 narrated video scenes a day" },
           ],
         },
         {
           icon: "🖥️", title: "Deployment Servers", desc: "Three reference-only slots for your own notes — Local, Cloud, Future",
           items: [
             { label: "Just notes", desc: "Nothing here affects the running app — it's a place to jot down each server's URL and login/notes as you set them up" },
+            { label: "Moving to another server", desc: "If the new server keeps the same database and storage settings, all data is already there. To move to a different database, run migrate.bat in the project folder: it copies every account, curriculum, grade and record from the old database to the new one in one step, and changes nothing if anything fails" },
           ],
         },
       ],
@@ -106,12 +108,14 @@ export function getAdminGuide(locale: "ar" | "en"): { title: string; subtitle: s
         items: [
           { label: "النموذج", desc: "بدّل بين GPT-4o، GPT-4o Mini، Claude 3.5 Sonnet، أو Gemini 1.5 Pro" },
           { label: "ضبط RAG", desc: "Top-K، حجم القطعة، التداخل، ودرجة الإبداع (Temperature)" },
+          { label: "ذكاء اصطناعي مجاني (Gemini)", desc: "السيرفر يقدر يشغّل كل الذكاء الاصطناعي على خدمات مجانية: Google Gemini (الشرح، الأسئلة، قراءة الصفحات المصوّرة، البحث، أصوات الفيديو) وGroq (تحويل تسجيلات المدرس لنص). بيتحدد من إعدادات السيرفر (AI_PROVIDER)، وطول ما هو شغال اختيار النموذج اللي فوق مش بيأثر. حدود المجاني: معالجة أبطأ للمناهج الكبيرة وحوالي 40 مشهد فيديو بصوت في اليوم" },
         ],
       },
       {
         icon: "🖥️", title: "سيرفرات النشر", desc: "3 خانات مرجعية بس لملاحظاتك — محلي، سحابي، فاضي للمستقبل",
         items: [
           { label: "مجرد ملاحظات", desc: "مفيهاش أي حاجة بتأثر على المنصة الشغالة — بس مكان تسجّل فيه رابط كل سيرفر وبياناته وقت ما تجهزه" },
+          { label: "النقل لسيرفر تاني", desc: "لو السيرفر الجديد على نفس إعدادات قاعدة البيانات والتخزين، كل البيانات موجودة من غير نقل. ولو هتغيّر قاعدة البيانات نفسها، شغّل migrate.bat من فولدر المشروع: بينقل كل الحسابات والمناهج والدرجات والسجلات من القديمة للجديدة مرة واحدة، ولو حصل خطأ مش بيغيّر حاجة" },
         ],
       },
     ],
