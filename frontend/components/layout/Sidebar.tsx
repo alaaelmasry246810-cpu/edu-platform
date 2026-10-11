@@ -5,6 +5,7 @@ import { useAuthStore } from "@/lib/store";
 import clsx from "clsx";
 import NotificationBell from "@/components/layout/NotificationBell";
 import LanguageSwitcher from "@/components/layout/LanguageSwitcher";
+import TeacherSwitcher from "@/components/layout/TeacherSwitcher";
 import { useI18n } from "@/lib/i18n";
 
 export default function Sidebar() {
@@ -107,6 +108,7 @@ export default function Sidebar() {
             </span>
           )}
         </div>
+        {user?.role === "student" && <TeacherSwitcher />}
       </div>
 
       {/* Navigation */}

@@ -16,6 +16,7 @@ from app.models.curriculum import Curriculum
 from app.models.exam import QuizAttempt, TeacherEvaluation, AttemptStatus, ExamTypeConfig, ExamType
 from app.middleware.auth import get_current_user, hash_password
 from app.services.notification_service import notify
+from app.services import teachers as links
 
 from app.services.ai_client import client as _ai_client
 
@@ -39,12 +40,13 @@ async def list_students(
     _require_teacher(current_user)
     r = await db.execute(
         select(User).where(
-            User.teacher_id == current_user.id,
+            links.students_of(current_user.id),
             User.role == UserRole.STUDENT
         ).order_by(User.full_name)
     )
     students = r.scalars().all()
-    return [_serialize_student(s) for s in students]
+    codes = await links.student_codes(db, current_user.id)
+    return [{**_serialize_student(s), "student_code": codes.get(s.id) or s.student_code} for s in students]
 
 
 def _generate_default_password(full_name: str) -> str:
@@ -80,15 +82,11 @@ async def create_student(
         raise HTTPException(status_code=409, detail="البريد الإلكتروني مستخدم بالفعل")
     ex_phone = await db.execute(select(User).where(User.phone == body.phone))
     if ex_phone.scalar_one_or_none():
-        raise HTTPException(status_code=409, detail="رقم التليفون مستخدم بالفعل")
+        # An existing student joins another teacher only from their own account,
+        # so a teacher can't take over someone's account by typing their number.
+        raise HTTPException(status_code=409, detail="رقم التليفون ده عليه حساب بالفعل — لو ده طالب، يضيفك من حسابه بكود المدرس بتاعك")
 
-    student_code = None
-    if current_user.teacher_code:
-        from sqlalchemy import func
-        count = await db.scalar(
-            select(func.count(User.id)).where(User.teacher_id == current_user.id)
-        )
-        student_code = f"{current_user.teacher_code}-{(count or 0) + 1:02d}"
+    student_code = await links.next_student_code(db, current_user)
 
     temp_password = _generate_default_password(body.full_name)
     student = User(
@@ -103,6 +101,8 @@ async def create_student(
         must_change_password=True,
     )
     db.add(student)
+    await db.flush()
+    await links.link(db, current_user, student)
     await db.commit()
     await db.refresh(student)
 
@@ -124,7 +124,7 @@ async def reset_student_password(
     _require_teacher(current_user)
     r = await db.execute(select(User).where(User.id == student_id))
     student = r.scalar_one_or_none()
-    if not student or (student.teacher_id != current_user.id and current_user.role != UserRole.ADMIN):
+    if not student or (current_user.role != UserRole.ADMIN and not await links.is_student_of(db, current_user.id, student.id)):
         raise HTTPException(status_code=404, detail="طالب غير موجود")
 
     temp_password = _generate_default_password(student.full_name)
@@ -149,7 +149,7 @@ async def toggle_student_ai_assist(
 
     r = await db.execute(select(User).where(User.id == student_id))
     student = r.scalar_one_or_none()
-    if not student or (student.teacher_id != current_user.id and current_user.role != UserRole.ADMIN):
+    if not student or (current_user.role != UserRole.ADMIN and not await links.is_student_of(db, current_user.id, student.id)):
         raise HTTPException(status_code=404, detail="طالب غير موجود")
 
     student.ai_assist_enabled = not student.ai_assist_enabled
@@ -183,20 +183,26 @@ async def student_attempts(
     # Verify student belongs to this teacher
     r = await db.execute(select(User).where(User.id == student_id))
     student = r.scalar_one_or_none()
-    if not student or (student.teacher_id != current_user.id and current_user.role != UserRole.ADMIN):
+    if not student or (current_user.role != UserRole.ADMIN and not await links.is_student_of(db, current_user.id, student.id)):
         raise HTTPException(status_code=404, detail="Student not found")
 
-    r = await db.execute(
-        select(QuizAttempt)
-        .where(QuizAttempt.student_id == student_id)
-        .order_by(QuizAttempt.started_at.desc())
-    )
+    q = select(QuizAttempt).where(QuizAttempt.student_id == student_id)
+    if current_user.role != UserRole.ADMIN:
+        # Only what the student did with ME — they may have other teachers too.
+        # Older attempts without a teacher count if they're on my curricula.
+        from sqlalchemy import and_, or_
+        q = q.where(or_(
+            QuizAttempt.teacher_id == current_user.id,
+            and_(QuizAttempt.teacher_id.is_(None),
+                 QuizAttempt.curriculum_id.in_(select(Curriculum.id).where(Curriculum.owner_id == current_user.id))),
+        ))
+    r = await db.execute(q.order_by(QuizAttempt.started_at.desc()))
     attempts = r.scalars().all()
     from app.models.activity import Activity, ActivityAttempt
     act_rows = (await db.execute(
         select(ActivityAttempt, Activity.title)
         .join(Activity, Activity.id == ActivityAttempt.activity_id)
-        .where(ActivityAttempt.user_id == student_id, Activity.owner_id == student.teacher_id)
+        .where(ActivityAttempt.user_id == student_id, Activity.owner_id == (student.teacher_id if current_user.role == UserRole.ADMIN else current_user.id))
         .order_by(ActivityAttempt.created_at.desc())
     )).all()
     return {

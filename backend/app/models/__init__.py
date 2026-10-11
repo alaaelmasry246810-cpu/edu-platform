@@ -10,6 +10,7 @@ from app.models.coupon import Coupon
 from app.models.deployment import DeploymentServer
 from app.models.interactive_video import InteractiveVideo, VideoSource
 from app.models.activity import Activity, ActivityAttempt, LiveSession, LivePlayer, FlashcardReview
+from app.models.teacher_student import TeacherStudent
 
 __all__ = [
     # User

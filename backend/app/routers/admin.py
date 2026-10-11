@@ -14,6 +14,7 @@ from app.models.curriculum import Curriculum
 from app.models.deployment import DeploymentServer
 from app.schemas.user import UserPublic, AdminUserUpdate, AdminSettings
 from app.middleware.auth import get_admin_user
+from app.services import teachers as links
 from app.config import settings
 
 _pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -275,7 +276,7 @@ async def list_teachers(
     result = []
     for t in teachers:
         cr = await db.scalar(
-            select(func.count(User.id)).where(User.teacher_id == t.id)
+            select(func.count(User.id)).where(links.students_of(t.id))
         )
         info = _serialize_teacher(t)
         info["student_count"] = cr or 0
@@ -391,10 +392,10 @@ async def delete_teacher(
     teacher = r.scalar_one_or_none()
     if not teacher:
         raise HTTPException(status_code=404, detail="معلم غير موجود")
-    # Unlink students
-    students_r = await db.execute(select(User).where(User.teacher_id == teacher_id))
+    # Unlink students (those with other teachers switch to one of them)
+    students_r = await db.execute(select(User).where(links.students_of(teacher_id)))
     for student in students_r.scalars().all():
-        student.teacher_id = None
+        await links.unlink(db, teacher_id, student)
     await db.delete(teacher)
     await db.commit()
     return {"message": "تم حذف المعلم وإلغاء ربط طلابه"}
@@ -452,7 +453,7 @@ async def teacher_students(
 ):
     """Admin views all students belonging to a teacher."""
     r = await db.execute(
-        select(User).where(User.teacher_id == teacher_id, User.role == UserRole.STUDENT).order_by(User.full_name)
+        select(User).where(links.students_of(teacher_id), User.role == UserRole.STUDENT).order_by(User.full_name)
     )
     return [{
         "id": str(s.id),

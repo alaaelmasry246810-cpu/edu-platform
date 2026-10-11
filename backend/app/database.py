@@ -53,6 +53,12 @@ async def init_db(target=None):
         await conn.execute(text("ALTER TABLE activity_attempts ADD COLUMN IF NOT EXISTS guest_phone VARCHAR(30)"))
         await conn.execute(text("ALTER TABLE activity_attempts ADD COLUMN IF NOT EXISTS guest_class VARCHAR(100)"))
         await conn.execute(text("CREATE INDEX IF NOT EXISTS ix_activity_attempts_guest_phone ON activity_attempts (guest_phone)"))
+        # Students can join several teachers: carry each existing single link over.
+        await conn.execute(text(
+            "INSERT INTO teacher_students (teacher_id, student_id, student_code, created_at) "
+            "SELECT teacher_id, id, student_code, created_at FROM users WHERE teacher_id IS NOT NULL "
+            "ON CONFLICT DO NOTHING"
+        ))
         # Lessons that cached the "no content found" fallback before it was
         # excluded from caching get regenerated on next view.
         from app.services.rag_service import NO_CONTENT_MESSAGE

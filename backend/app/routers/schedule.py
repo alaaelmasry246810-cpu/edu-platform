@@ -19,6 +19,7 @@ from pydantic import BaseModel
 from app.database import get_db
 from app.models.user import User, UserRole
 from app.middleware.auth import get_current_user
+from app.services import teachers as links
 
 router = APIRouter(prefix="/schedule", tags=["Schedule"])
 
@@ -54,7 +55,7 @@ async def _get_student_for_view(student_id: str, current_user: User, db: AsyncSe
         raise HTTPException(status_code=404, detail="الطالب غير موجود")
     if current_user.role == UserRole.STUDENT:
         raise HTTPException(status_code=403, detail="Forbidden")
-    if current_user.role == UserRole.TEACHER and student.teacher_id != current_user.id:
+    if current_user.role == UserRole.TEACHER and not await links.is_student_of(db, current_user.id, student.id):
         raise HTTPException(status_code=403, detail="Forbidden")
     return student
 

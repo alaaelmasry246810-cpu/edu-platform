@@ -17,6 +17,7 @@ export function getTeacherGuide(locale: "ar" | "en"): { title: string; subtitle:
           items: [
             { label: "+ Add Student", desc: "Enter just the name and email — a temporary password (first name + year, e.g. 'ahmed2026') is generated and shown once. Copy it and hand it to the student; they must change it on first login" },
             { label: "Reset Password", desc: "If a student forgets their password, generate a new temporary one the same way" },
+            { label: "A student who already has an account", desc: "Students can study with several teachers. If they already have an account (with another teacher), they add you themselves from their account using your join code — then they appear here. You only see their work with you" },
             { label: "AI Assist toggle", desc: "Only visible if the admin granted you this permission — lets a specific student get AI hints during exams" },
           ],
         },
@@ -154,6 +155,7 @@ export function getTeacherGuide(locale: "ar" | "en"): { title: string; subtitle:
         items: [
           { label: "+ إضافة طالب", desc: "حط بس الاسم والإيميل — هيتولّد باسورد مؤقت (اسم أول + سنة، مثلاً 'ahmed2026') ويظهر مرة واحدة. انسخه وديه للطالب — لازم يغيّره أول ما يسجّل دخول" },
           { label: "إعادة تعيين الباسورد", desc: "لو الطالب نسي باسورده، تقدر تولّد واحد جديد بنفس الطريقة" },
+          { label: "طالب عنده حساب بالفعل", desc: "الطالب يقدر يذاكر مع أكتر من مدرس. لو عنده حساب (عند مدرس تاني)، هو اللي بيضيفك من حسابه بكود الانضمام بتاعك — وبعدها يظهر هنا. وإنت بتشوف شغله معاك بس" },
           { label: "زرار AI Assist", desc: "بيظهر بس لو الآدمن دّاك الصلاحية دي — بيخلي طالب معيّن ياخد تلميحات AI في الامتحانات" },
         ],
       },

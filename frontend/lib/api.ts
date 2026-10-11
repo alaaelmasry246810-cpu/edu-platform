@@ -42,6 +42,10 @@ export const authAPI = {
   teacherCode:     ()             => api.get("/auth/teacher-code"),
   changePassword:  (data: object) => api.post("/auth/change-password", data),
   reportDevtools:  ()             => api.post("/auth/report-devtools"),
+  myTeachers:      ()             => api.get("/auth/my-teachers"),
+  joinTeacher:     (teacher_code: string) => api.post("/auth/my-teachers", { teacher_code }),
+  activateTeacher: (teacherId: string)    => api.post(`/auth/my-teachers/${teacherId}/activate`),
+  leaveTeacher:    (teacherId: string)    => api.delete(`/auth/my-teachers/${teacherId}`),
 };
 
 // ── Curriculum ────────────────────────────────────────────────

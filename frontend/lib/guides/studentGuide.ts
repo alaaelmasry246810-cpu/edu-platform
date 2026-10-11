@@ -14,6 +14,14 @@ export function getStudentGuide(locale: "ar" | "en"): { title: string; subtitle:
           ],
         },
         {
+          icon: "👨‍🏫", title: "My Teachers", desc: "Study with more than one teacher from the same account",
+          items: [
+            { label: "Choose a teacher", desc: "Under your name in the side menu, pick the teacher — your curricula, assignments, games and videos switch to that teacher's" },
+            { label: "+ Add a teacher", desc: "Type the new teacher's code (ask them for it) and press Join — you join them with the same account" },
+            { label: "Privacy", desc: "Each teacher sees only your work with them — not your grades with your other teachers" },
+          ],
+        },
+        {
           icon: "✏️", title: "Exams", desc: "Take a lesson quiz, unit test, or full exam",
           items: [
             { label: "Create a custom exam", desc: "Choose the curriculum and exam type — questions come from your teacher's material and question bank, topped up by AI-generated ones" },
@@ -99,6 +107,14 @@ export function getStudentGuide(locale: "ar" | "en"): { title: string; subtitle:
         items: [
           { label: "رفع منهج", desc: "ملف PDF أو صورة — الذكاء الاصطناعي بيقسّمه تلقائيًا لوحدات ودروس" },
           { label: "دراسة الدرس", desc: "كل درس فيه شرح، ملخص، مصطلحات، بطاقات مذاكرة، وفيديو لو معلمك ضافه" },
+        ],
+      },
+      {
+        icon: "👨‍🏫", title: "مدرسيني", desc: "تقدر تذاكر مع أكتر من مدرس من نفس الحساب",
+        items: [
+          { label: "اختيار المدرس", desc: "تحت اسمك في القايمة الجانبية اختار المدرس — مناهجك وتكليفاتك وألعابك وفيديوهاتك بتتحول للي عند المدرس ده" },
+          { label: "+ إضافة مدرس", desc: "اكتب كود المدرس الجديد (اطلبه منه) واضغط انضم — هتبقى من طلابه بنفس حسابك" },
+          { label: "الخصوصية", desc: "كل مدرس بيشوف شغلك معاه هو بس — مش بيشوف درجاتك عند مدرسينك التانيين" },
         ],
       },
       {

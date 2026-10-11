@@ -67,5 +67,14 @@
     "search": "Search",
     "close": "Close",
     "language": "Language"
+  },
+  "teacherSwitcher": {
+    "label": "Teacher",
+    "add": "Add a teacher",
+    "codePlaceholder": "Teacher code",
+    "join": "Join",
+    "joined": "You joined {name}",
+    "already": "You're already one of {name}'s students",
+    "error": "Something went wrong, try again"
   }
 }

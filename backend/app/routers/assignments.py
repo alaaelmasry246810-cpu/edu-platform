@@ -15,6 +15,7 @@ from app.models.exam import QuizAttempt, ExamType, AttemptStatus
 from app.models.assignment import Assignment, AssignmentTarget, StudentGroup
 from app.middleware.auth import get_current_user, check_quota
 from app.services.notification_service import notify
+from app.services import teachers as links
 from app.routers.ai import _create_attempt_for_student
 
 router = APIRouter(prefix="/assignments", tags=["Assignments"])
@@ -38,7 +39,7 @@ async def _validate_students_belong_to_teacher(student_ids: list[uuid.UUID], tea
         return
     r = await db.execute(
         select(func.count(User.id)).where(
-            User.id.in_(student_ids), User.teacher_id == teacher_id, User.role == UserRole.STUDENT
+            User.id.in_(student_ids), links.students_of(teacher_id), User.role == UserRole.STUDENT
         )
     )
     if r.scalar_one() != len(set(student_ids)):

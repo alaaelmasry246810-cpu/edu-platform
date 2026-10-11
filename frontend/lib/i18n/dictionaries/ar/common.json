@@ -67,5 +67,14 @@
     "search": "بحث",
     "close": "إغلاق",
     "language": "اللغة"
+  },
+  "teacherSwitcher": {
+    "label": "المدرس",
+    "add": "إضافة مدرس",
+    "codePlaceholder": "كود المدرس",
+    "join": "انضم",
+    "joined": "انضممت لـ {name}",
+    "already": "إنت بالفعل من طلاب {name}",
+    "error": "حصل خطأ، جرّب تاني"
   }
 }

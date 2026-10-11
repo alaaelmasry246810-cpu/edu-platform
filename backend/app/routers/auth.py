@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime
+from pydantic import BaseModel
 
 from app.database import get_db
 from app.models.user import User, AccountStatus, UserRole
@@ -12,6 +13,8 @@ from app.middleware.auth import (
     create_access_token, create_refresh_token,
     get_current_user
 )
+
+from app.services import teachers as links
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -24,11 +27,7 @@ def _generate_teacher_code(length: int = 8) -> str:
 
 async def _generate_student_code(teacher: User, db: AsyncSession) -> str:
     """Student code derived from their teacher's code, e.g. 'T-AB12CD-03'."""
-    from sqlalchemy import func
-    count = await db.scalar(
-        select(func.count(User.id)).where(User.teacher_id == teacher.id)
-    )
-    return f"{teacher.teacher_code}-{(count or 0) + 1:02d}"
+    return await links.next_student_code(db, teacher)
 
 
 class TeacherRegisterRequest(RegisterRequest):
@@ -70,6 +69,9 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
         must_change_password=False,
     )
     db.add(user)
+    if teacher:
+        await db.flush()
+        await links.link(db, teacher, user)
     await db.commit()
     return {
         "message": "Account created. Awaiting admin activation.",
@@ -184,3 +186,70 @@ async def get_my_teacher_code(current_user: User = Depends(get_current_user)):
     if current_user.role not in (UserRole.TEACHER, UserRole.ADMIN):
         raise HTTPException(status_code=403, detail="Teachers only")
     return {"teacher_code": current_user.teacher_code}
+
+
+# ── A student's teachers (they can study with several) ───────
+
+def _require_student(user: User) -> None:
+    if user.role != UserRole.STUDENT:
+        raise HTTPException(status_code=403, detail="Students only")
+
+
+@router.get("/my-teachers")
+async def my_teachers(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """The student's teachers; `active` is the one whose content they see now."""
+    _require_student(current_user)
+    from app.models.teacher_student import TeacherStudent
+    rows = (await db.execute(
+        select(User, TeacherStudent.student_code)
+        .join(TeacherStudent, TeacherStudent.teacher_id == User.id)
+        .where(TeacherStudent.student_id == current_user.id)
+        .order_by(TeacherStudent.created_at)
+    )).all()
+    return [{"id": str(t.id), "full_name": t.full_name, "student_code": code, "active": t.id == current_user.teacher_id}
+            for t, code in rows]
+
+
+class JoinTeacherRequest(BaseModel):
+    teacher_code: str
+
+
+@router.post("/my-teachers")
+async def join_teacher(body: JoinTeacherRequest, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Join another teacher with their code; that teacher becomes the active one."""
+    _require_student(current_user)
+    teacher = (await db.execute(
+        select(User).where(User.teacher_code == body.teacher_code.upper().strip(), User.role == UserRole.TEACHER)
+    )).scalar_one_or_none()
+    if not teacher:
+        raise HTTPException(status_code=404, detail="كود المدرس غير صحيح")
+    already = await links.is_student_of(db, teacher.id, current_user.id)
+    await links.link(db, teacher, current_user)
+    current_user.teacher_id = teacher.id
+    if not already:
+        from app.services.notification_service import notify
+        await notify(db, user_id=teacher.id, title="طالب جديد انضم ليك",
+                     body=f"{current_user.full_name} انضم لطلابك بكود المدرس", notif_type="info")
+    await db.commit()
+    return {"teacher_id": str(teacher.id), "full_name": teacher.full_name, "already": already}
+
+
+@router.post("/my-teachers/{teacher_id}/activate")
+async def activate_teacher(teacher_id: uuid.UUID, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Switch which teacher's curricula/assignments/activities the student sees."""
+    _require_student(current_user)
+    if not await links.is_student_of(db, teacher_id, current_user.id):
+        raise HTTPException(status_code=404, detail="المدرس ده مش من مدرسينك")
+    current_user.teacher_id = teacher_id
+    await db.commit()
+    return {"active_teacher_id": str(teacher_id)}
+
+
+@router.delete("/my-teachers/{teacher_id}")
+async def leave_teacher(teacher_id: uuid.UUID, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    _require_student(current_user)
+    if not await links.is_student_of(db, teacher_id, current_user.id):
+        raise HTTPException(status_code=404, detail="المدرس ده مش من مدرسينك")
+    await links.unlink(db, teacher_id, current_user)
+    await db.commit()
+    return {"active_teacher_id": str(current_user.teacher_id) if current_user.teacher_id else None}

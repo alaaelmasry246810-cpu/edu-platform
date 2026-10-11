@@ -18,6 +18,7 @@ from app.models.assignment import StudentGroup
 from app.models.activity import Activity, ActivityAttempt, FlashcardReview
 from app.services import activity_service, lesson_content
 from app.services.notification_service import notify
+from app.services import teachers as links
 
 router = APIRouter(prefix="/activities", tags=["Activities"])
 study_router = APIRouter(prefix="/study", tags=["Flashcard study"])
@@ -249,7 +250,7 @@ async def _shared_activity(token: str, user: User | None, db: AsyncSession) -> A
     if not a or not a.link_enabled:
         raise HTTPException(status_code=404, detail="الرابط ده مش متاح — اسأل المدرس")
     if a.allow_guests is False and not (
-        user and (user.id == a.owner_id or user.role == UserRole.ADMIN or user.teacher_id == a.owner_id)
+        user and (user.id == a.owner_id or user.role == UserRole.ADMIN or await links.is_student_of(db, a.owner_id, user.id))
     ):
         raise HTTPException(status_code=403, detail="النشاط ده لطلاب المدرس المسجلين بس — سجّل دخولك الأول")
     return a
@@ -272,7 +273,7 @@ async def _registered_student(a: Activity, phone: str, db: AsyncSession) -> User
     if not d:
         return None
     students = (await db.execute(
-        select(User).where(User.teacher_id == a.owner_id, User.role == UserRole.STUDENT, User.phone.is_not(None))
+        select(User).where(links.students_of(a.owner_id), User.role == UserRole.STUDENT, User.phone.is_not(None))
     )).scalars().all()
     return next((s for s in students if _digits(s.phone) == d), None)
 
@@ -395,7 +396,7 @@ async def _notify_students(a: Activity, teacher: User, db: AsyncSession) -> None
         group = await db.get(StudentGroup, a.group_id)
         ids = [uuid.UUID(str(s)) for s in (group.student_ids or [])] if group else []
     else:
-        ids = list((await db.execute(select(User.id).where(User.teacher_id == teacher.id, User.role == UserRole.STUDENT))).scalars().all())
+        ids = list((await db.execute(select(User.id).where(links.students_of(teacher.id), User.role == UserRole.STUDENT))).scalars().all())
     for sid in ids:
         try:
             await notify(db, user_id=sid, title="🎮 نشاط جديد", body=a.title, link=f"/dashboard/activities/{a.id}")
@@ -545,12 +546,13 @@ async def records(user: User = Depends(get_current_user), db: AsyncSession = Dep
         .where(Activity.owner_id == user.id)
         .order_by(ActivityAttempt.created_at)
     )).all()
+    mine = set(await links.student_codes(db, user.id))
     people: dict[str, dict] = {}
     for att, title, u in rows:
         if u:
             key = f"u:{u.id}"
             p = people.setdefault(key, {
-                "key": key, "kind": "student" if u.teacher_id == user.id else "account", "student_id": str(u.id),
+                "key": key, "kind": "student" if u.id in mine else "account", "student_id": str(u.id),
                 "name": u.full_name, "phone": u.phone, "class": None, "activities": {},
             })
         else:
@@ -610,10 +612,7 @@ async def convert_guest(body: ConvertGuestBody, user: User = Depends(get_current
     email = (body.email or "").strip().lower() or f"{phone}@students.invalid"
     if (await db.execute(select(User).where(User.email == email))).scalar_one_or_none():
         raise HTTPException(status_code=409, detail="البريد الإلكتروني مستخدم بالفعل")
-    student_code = None
-    if user.teacher_code:
-        count = await db.scalar(select(func.count(User.id)).where(User.teacher_id == user.id))
-        student_code = f"{user.teacher_code}-{(count or 0) + 1:02d}"
+    student_code = await links.next_student_code(db, user)
     temp_password = _generate_default_password(name)
     student = User(
         email=email, phone=phone, full_name=name, hashed_password=hash_password(temp_password),
@@ -622,6 +621,7 @@ async def convert_guest(body: ConvertGuestBody, user: User = Depends(get_current
     )
     db.add(student)
     await db.flush()
+    await links.link(db, user, student)
     for att in attempts:
         att.user_id = student.id
     await db.commit()
