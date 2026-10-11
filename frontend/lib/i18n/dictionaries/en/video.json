@@ -93,12 +93,12 @@
     "alignTextPlaceholder": "Optional: paste the lesson text so it's shown with the sentence you're saying lit up (empty: taken from the uploaded curriculum, or your own words are shown if none)"
   },
   "voices": {
-    "nova": "Nova (female)",
-    "shimmer": "Shimmer (female)",
-    "alloy": "Alloy (neutral)",
-    "echo": "Echo (male)",
-    "fable": "Fable (male)",
-    "onyx": "Onyx (deep male)"
+    "nova": "Female teacher — firm",
+    "shimmer": "Female teacher — calm",
+    "alloy": "Young voice (female)",
+    "echo": "Male teacher — firm",
+    "fable": "Male teacher — upbeat",
+    "onyx": "Male teacher — deep, steady"
   },
   "editor": {
     "error": "Something went wrong, try again",

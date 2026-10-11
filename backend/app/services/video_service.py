@@ -9,6 +9,8 @@ Three ways in (see InteractiveVideo.source):
              questions (or untimed ones from the curriculum content when it isn't).
 """
 import asyncio
+import base64
+import io
 import json
 import logging
 import uuid
@@ -21,7 +23,12 @@ from app.services import ai_client, video_visuals
 logger = logging.getLogger(__name__)
 
 TTS_VOICES = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"]
-# The same six voice names on the free edge-tts voices (used unless AI_PROVIDER=openai).
+# The same six voice names on Gemini's voices (AI_PROVIDER=gemini) and, as a
+# fallback, on the free edge-tts Arabic voices — same gender/character each.
+_GEMINI_VOICES = {
+    "nova": "Kore", "shimmer": "Aoede", "alloy": "Leda",
+    "onyx": "Charon", "echo": "Orus", "fable": "Puck",
+}
 _EDGE_VOICES = {
     "nova": "ar-EG-SalmaNeural", "onyx": "ar-EG-ShakirNeural",
     "shimmer": "ar-SA-ZariyahNeural", "echo": "ar-SA-HamedNeural",
@@ -173,18 +180,84 @@ async def synthesize(text: str, voice: str, out_path: Path) -> None:
     voice = voice if voice in TTS_VOICES else "nova"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     if ai_client.gemini():
+        # Gemini voices first; then edge-tts (Microsoft blocks it at times);
+        # then Google Translate's single Arabic voice — all free.
         try:
-            import edge_tts  # free Microsoft Edge voices, no key
-            await asyncio.wait_for(edge_tts.Communicate(text[:4000], _EDGE_VOICES[voice]).save(str(out_path)), 60)
+            out_path.write_bytes(await _gemini_tts(text[:4000], _GEMINI_VOICES[voice]))
+            return
         except Exception:
-            # Microsoft blocks this endpoint from time to time — fall back to
-            # Google Translate's voice (one Arabic voice, also free, no key).
+            logger.warning("Gemini TTS failed, trying edge-tts", exc_info=True)
+        try:
+            import edge_tts
+            await asyncio.wait_for(edge_tts.Communicate(text[:4000], _EDGE_VOICES[voice]).save(str(out_path)), 60)
+            return
+        except Exception:
             logger.warning("edge-tts failed, using gTTS", exc_info=True)
-            from gtts import gTTS
-            await asyncio.to_thread(gTTS(text[:4000], lang="ar").save, str(out_path))
+        from gtts import gTTS
+        await asyncio.to_thread(gTTS(text[:4000], lang="ar").save, str(out_path))
         return
     resp = await client.audio.speech.create(model="tts-1", voice=voice, input=text[:4000], response_format="mp3")
     out_path.write_bytes(resp.content)
+
+
+# model → time.monotonic() until which its free quota is used up
+_tts_exhausted: dict[str, float] = {}
+
+
+async def _gemini_tts(text: str, voice: str) -> bytes:
+    """Narrate with Gemini's speech models → MP3 bytes, moving to the next model
+    when one hits its free-tier quota. Raises when none can answer."""
+    import time
+    import httpx
+    body = {
+        # Only the narration — a style instruction here gets read out loud.
+        "contents": [{"parts": [{"text": text}]}],
+        "generationConfig": {
+            "responseModalities": ["AUDIO"],
+            "speechConfig": {"voiceConfig": {"prebuiltVoiceConfig": {"voiceName": voice}}},
+        },
+    }
+    errors = []
+    async with httpx.AsyncClient(timeout=120) as h:
+        for model in [m.strip() for m in settings.GEMINI_TTS_MODELS.split(",") if m.strip()]:
+            if _tts_exhausted.get(model, 0) > time.monotonic():
+                continue
+            for attempt in range(2):
+                r = await h.post(
+                    f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
+                    headers={"x-goog-api-key": settings.GEMINI_API_KEY}, json=body,
+                )
+                if r.status_code != 429:
+                    break
+                if "PerDay" in r.text:  # daily quota gone — skip this model for a while
+                    _tts_exhausted[model] = time.monotonic() + 3600
+                    break
+                if attempt == 0:  # per-minute limit — one short wait
+                    await asyncio.sleep(15)
+            try:
+                part = r.json()["candidates"][0]["content"]["parts"][0]["inlineData"]
+                return _pcm_to_mp3(base64.b64decode(part["data"]), part.get("mimeType", ""))
+            except Exception:
+                errors.append(f"{model}: {r.status_code} {r.text[:120]}")
+    raise RuntimeError("Gemini TTS unavailable — " + " | ".join(errors or ["all models over quota"]))
+
+
+def _pcm_to_mp3(data: bytes, mime: str) -> bytes:
+    """Gemini returns WAV or raw 16-bit PCM (audio/L16;rate=24000) — encode as MP3."""
+    import wave
+    import lameenc
+    rate, channels = 24000, 1
+    if data[:4] == b"RIFF":
+        with wave.open(io.BytesIO(data)) as w:
+            rate, channels, data = w.getframerate(), w.getnchannels(), w.readframes(w.getnframes())
+    elif "rate=" in mime:
+        rate = int(mime.split("rate=")[1].split(";")[0])
+    enc = lameenc.Encoder()
+    enc.set_bit_rate(64)
+    enc.set_in_sample_rate(rate)
+    enc.set_channels(channels)
+    enc.set_quality(2)
+    return enc.encode(data) + enc.flush()
 
 
 # ── Podcast / uploaded video ─────────────────────────────────

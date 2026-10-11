@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     GEMINI_FAST_MODEL: str = "gemini-flash-lite-latest"
     GEMINI_EMBEDDING_MODEL: str = "gemini-embedding-001"
     GEMINI_REASONING_EFFORT: str = "low"
+    # Narration of AI videos (Arabic, several voices). The free tier allows ~10
+    # requests/day PER MODEL, so these are used in turn as each one runs out.
+    GEMINI_TTS_MODELS: str = "gemini-3.8-flash-tts,gemini-3.8-flash-lite-tts,gemini-3.1-flash-tts-preview,gemini-2.5-flash-preview-tts"
     GROQ_API_KEY: str = ""  # free Whisper speech-to-text (podcasts / uploaded videos)
     AI_MODEL: str = "gpt-4o"
     EMBEDDING_MODEL: str = "text-embedding-3-large"
