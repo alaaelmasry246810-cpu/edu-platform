@@ -40,6 +40,15 @@ export function getTeacherGuide(locale: "ar" | "en"): { title: string; subtitle:
           ],
         },
         {
+          icon: "🚀", title: "Quick start: a question game in 4 steps", desc: "Make questions, run them live in class or send a link — for your students and anyone else",
+          items: [
+            { label: "1. Make the questions", desc: "🎮 Games & Activities → New activity → type a title, then write the questions yourself, or choose a curriculum, lesson and number of questions and press 🤖 Generate with AI (or take them from the lesson's flashcards). Save" },
+            { label: "2. Live competition in class", desc: "Open the activity → 🔴 Live game. Show the screen with the PIN — students join from their phones (account or not), you press Start and the ranking shows after every question" },
+            { label: "3. Or send a link", desc: "Open the activity → 🔗 Share tab → turn on Share link → Copy link or Send on WhatsApp. \"Open to anyone\" on = anyone with the link can play (non-students enter name, mobile and class); off = only your registered students after signing in" },
+            { label: "4. See the results", desc: "The activity's 📊 Report tab, and 📒 Results Records for everyone in one place — where you can turn a non-student into your student with one click" },
+          ],
+        },
+        {
           icon: "🎮", title: "Games & Activities", desc: "Write questions once, play them as many games, assign them, print them",
           items: [
             { label: "Create an activity", desc: "Games & Activities → New activity. Type questions and answers, quick-paste one per line (question | answer | wrong option…), take them from a lesson's flashcards, or 🤖 generate them with AI from the lesson text" },
@@ -177,6 +186,15 @@ export function getTeacherGuide(locale: "ar" | "en"): { title: string; subtitle:
           { label: "عرض القائمة", desc: "افتح التكليف عشان تشوف كل طالب مستهدف وحالة محاولته" },
         ],
       },
+        {
+          icon: "🚀", title: "ابدأ بسرعة: لعبة أسئلة في 4 خطوات", desc: "اعمل أسئلة، والعبها مسابقة حية في الفصل أو ابعت رابط — لطلابك ولأي حد",
+          items: [
+            { label: "1. اعمل الأسئلة", desc: "🎮 الأنشطة والألعاب ← نشاط جديد ← اكتب عنوان النشاط، وبعدين اكتب الأسئلة بإيدك، أو اختار المنهج والدرس وعدد الأسئلة واضغط 🤖 ولّد بالذكاء الاصطناعي (أو خدها من فلاش كارد الدرس). واحفظ" },
+            { label: "2. مسابقة حية في الفصل", desc: "افتح النشاط ← 🔴 مسابقة حية. اعرض الشاشة بكود المسابقة — الطلاب يدخلوا من موبايلاتهم (بحساب أو من غير)، وإنت تضغط ابدأ والترتيب بيظهر بعد كل سؤال" },
+            { label: "3. أو ابعت رابط", desc: "افتح النشاط ← تاب 🔗 مشاركة ← فعّل رابط مشاركة ← انسخ الرابط أو ابعته واتساب. «مسموح لأي حد» مفعّل = أي حد معاه الرابط يحل (اللي مش مسجّل يكتب اسمه وموبايله وفصله)، ومقفول = طلابك المسجلين بس بعد تسجيل الدخول" },
+            { label: "4. شوف النتايج", desc: "تاب 📊 التقرير في النشاط، و📒 سجل النتائج لكل الناس في مكان واحد — ومنه تحوّل أي حد مش مسجّل لطالب عندك بضغطة" },
+          ],
+        },
         {
           icon: "🎮", title: "الأنشطة والألعاب", desc: "اكتب الأسئلة مرة واحدة والعبها بكذا لعبة، واسندها واجب، واطبعها",
           items: [
